@@ -1,0 +1,9 @@
+{
+  "name": "hassbeam",
+  "content_in_root": false,
+  "domains": ["hassbeam"],
+  "country": "global",
+  "homeassistant": "2023.0.0",
+  "render_readme": true,
+  "filename": "www/hassbeam-card/hassbeam-card.js"
+}
