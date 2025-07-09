@@ -11,14 +11,12 @@ async def async_setup(hass, config):
 
     async_register_built_in_panel(
         hass,
-        component_name="iframe",  # oder "custom" falls du ein JS-basiertes Panel hast
+        component_name="iframe",  # Alternative: "custom" für echte WebComponent
         sidebar_title="Custom Panel",
         sidebar_icon="mdi:tools",
         frontend_url_path="custom-panel",
-        config={
-            "url": "/local/custom_panel_demo_panel/index.html"
-        },
-        require_admin=True
+        config={"url": "/local/custom_panel_demo_panel/index.html"},
+        require_admin=False
     )
 
     return True
