@@ -1,0 +1,6 @@
+{
+  "name": "Custom Panel Demo",
+  "content_in_root": true,
+  "domains": ["integration"],
+  "homeassistant": "2023.0.0"
+}
