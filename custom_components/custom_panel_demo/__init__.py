@@ -1,21 +1,23 @@
-from homeassistant.core import HomeAssistant
+from homeassistant.components.frontend import async_register_built_in_panel
 
-async def async_setup(hass: HomeAssistant, config: dict):
-    panel_url_path = "/custom-panel-demo"
-    panel_local_dir = hass.config.path("www/custom_panel_demo_panel")
+DOMAIN = "custom_panel_demo"
 
+async def async_setup(hass, config):
     hass.http.register_static_path(
-        panel_url_path,
-        panel_local_dir,
+        "/custom_panel_demo_panel",
+        hass.config.path("www/custom_panel_demo_panel"),
         cache_headers=False
     )
 
-    hass.components.frontend.async_register_built_in_panel(
-        component_name="iframe",
-        sidebar_title="Custom Panel Demo",
-        sidebar_icon="mdi:view-dashboard",
-        frontend_url_path="custom-panel-demo",
-        config={"url": f"{panel_url_path}/index.html"},
+    async_register_built_in_panel(
+        hass,
+        component_name="iframe",  # oder "custom" falls du ein JS-basiertes Panel hast
+        sidebar_title="Custom Panel",
+        sidebar_icon="mdi:tools",
+        frontend_url_path="custom-panel",
+        config={
+            "url": "/local/custom_panel_demo_panel/index.html"
+        },
         require_admin=True
     )
 

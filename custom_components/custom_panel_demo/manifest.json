@@ -2,7 +2,10 @@
   "domain": "custom_panel_demo",
   "name": "Custom Panel Demo",
   "version": "1.0.0",
+  "documentation": "https://github.com/opapen/custom_panel_demo",
   "requirements": [],
-  "codeowners": ["@your-github-username"],
-  "iot_class": "local_push"
+  "dependencies": [],
+  "codeowners": [],
+  "integration_type": "panel",
+  "iot_class": "local_polling"
 }

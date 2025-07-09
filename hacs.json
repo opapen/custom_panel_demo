@@ -1,5 +1,0 @@
-{
-  "name": "Custom Panel Demo",
-  "domains": ["integration"],
-  "homeassistant": "2023.0.0"
-}
