@@ -1,7 +1,7 @@
 {
   "domain": "custom_panel_demo",
   "name": "Custom Panel Demo",
-  "version": "1.0.3",
+  "version": "1.1.0",
   "documentation": "https://github.com/opapen/custom_panel_demo",
   "requirements": [],
   "dependencies": [],
