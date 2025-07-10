@@ -95,19 +95,19 @@ class HassBeamCard extends HTMLElement {
       <div class="table-container" style="max-height: ${tableHeight};">
         <table id="ir-codes-table">
           <colgroup>
-            <col style="width: 12.5%;">
-            <col style="width: 12.5%;">
-            <col style="width: 12.5%;">
-            <col style="width: 12.5%;">
-            <col style="width: 50%;">
+            <col style="width: 12.5% !important; min-width: 90px; max-width: 12.5%;">
+            <col style="width: 12.5% !important; min-width: 90px; max-width: 12.5%;">
+            <col style="width: 12.5% !important; min-width: 70px; max-width: 12.5%;">
+            <col style="width: 12.5% !important; min-width: 70px; max-width: 12.5%;">
+            <col style="width: 50% !important; min-width: 200px; max-width: 50%;">
           </colgroup>
           <thead>
             <tr>
-              <th>Zeitstempel</th>
-              <th>Gerät</th>
-              <th>Aktion</th>
-              <th>Protocol</th>
-              <th>Event Data</th>
+              <th style="width: 12.5% !important;">Zeitstempel</th>
+              <th style="width: 12.5% !important;">Gerät</th>
+              <th style="width: 12.5% !important;">Aktion</th>
+              <th style="width: 12.5% !important;">Protocol</th>
+              <th style="width: 50% !important;">Event Data</th>
             </tr>
           </thead>
           <tbody id="table-body">
@@ -189,47 +189,53 @@ class HassBeamCard extends HTMLElement {
           overflow: auto;
           border: 1px solid var(--divider-color);
           border-radius: 4px;
+          width: 100%;
         }
         
         #ir-codes-table {
           width: 100%;
           border-collapse: collapse;
           font-size: 14px;
-          table-layout: fixed;
+          table-layout: fixed !important;
         }
         
-        /* Spaltenbreiten explizit definieren */
-        #ir-codes-table colgroup col:nth-child(1) { width: 12.5%; }
-        #ir-codes-table colgroup col:nth-child(2) { width: 12.5%; }
-        #ir-codes-table colgroup col:nth-child(3) { width: 12.5%; }
-        #ir-codes-table colgroup col:nth-child(4) { width: 12.5%; }
-        #ir-codes-table colgroup col:nth-child(5) { width: 50%; }
+        /* Explizite Spaltenbreiten mit wichtigster Priorität */
+        #ir-codes-table col:nth-child(1) { width: 12.5% !important; }
+        #ir-codes-table col:nth-child(2) { width: 12.5% !important; }
+        #ir-codes-table col:nth-child(3) { width: 12.5% !important; }
+        #ir-codes-table col:nth-child(4) { width: 12.5% !important; }
+        #ir-codes-table col:nth-child(5) { width: 50% !important; }
         
-        /* Fallback für th/td Selektoren */
+        /* Doppelte Absicherung über th/td */
         #ir-codes-table th:nth-child(1),
         #ir-codes-table td:nth-child(1) { 
           width: 12.5% !important; 
-          min-width: 100px;
+          max-width: 12.5% !important;
+          min-width: 90px !important;
         }
         #ir-codes-table th:nth-child(2),
         #ir-codes-table td:nth-child(2) { 
           width: 12.5% !important; 
-          min-width: 100px;
+          max-width: 12.5% !important;
+          min-width: 90px !important;
         }
         #ir-codes-table th:nth-child(3),
         #ir-codes-table td:nth-child(3) { 
           width: 12.5% !important; 
-          min-width: 80px;
+          max-width: 12.5% !important;
+          min-width: 70px !important;
         }
         #ir-codes-table th:nth-child(4),
         #ir-codes-table td:nth-child(4) { 
           width: 12.5% !important; 
-          min-width: 80px;
+          max-width: 12.5% !important;
+          min-width: 70px !important;
         }
         #ir-codes-table th:nth-child(5),
         #ir-codes-table td:nth-child(5) { 
           width: 50% !important; 
-          min-width: 200px;
+          max-width: 50% !important;
+          min-width: 200px !important;
         }
         
         #ir-codes-table th,
@@ -240,6 +246,10 @@ class HassBeamCard extends HTMLElement {
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
+          user-select: text;
+          -webkit-user-select: text;
+          -moz-user-select: text;
+          -ms-user-select: text;
         }
         
         #ir-codes-table th {
@@ -256,25 +266,35 @@ class HassBeamCard extends HTMLElement {
         .timestamp {
           font-family: monospace;
           font-size: 12px;
+          user-select: text;
+          cursor: text;
         }
         
         .device {
           font-weight: 500;
+          user-select: text;
+          cursor: text;
         }
         
         .action {
           color: var(--primary-color);
+          user-select: text;
+          cursor: text;
         }
         
         .protocol {
           font-weight: 500;
           color: var(--secondary-text-color);
           font-size: 12px;
+          user-select: text;
+          cursor: text;
         }
         
         .event-data {
           font-family: monospace;
           font-size: 12px;
+          user-select: text;
+          cursor: text;
         }
         
         .event-data:hover {
@@ -565,8 +585,6 @@ class HassBeamCard extends HTMLElement {
         originalData: parsed
       });
       
-      // Protocol aus den Event-Daten entfernen
-      const { protocol: _, ...filteredData } = parsed;
       
       const formattedEventData = Object.entries(filteredData)
         .map(([key, value]) => `${key}: ${value}`)
