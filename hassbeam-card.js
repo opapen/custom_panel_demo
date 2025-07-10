@@ -1,7 +1,26 @@
 console.info("HassBeam Card v2.0.0 geladen");
 
+/**
+ * HassBeam Card - Custom Lovelace Card für Home Assistant
+ * Zeigt IR-Code Events mit konfigurierbarer Tabelle an
+ */
 class HassBeamCard extends HTMLElement {
+  constructor() {
+    super();
+    this.config = {};
+    this.irCodes = [];
+    this.currentDevice = '';
+    this.currentLimit = 10;
+    this._hass = null;
+  }
+
+  /**
+   * Konfiguration der Karte setzen
+   * @param {Object} config - Konfigurationsobjekt aus YAML
+   */
   setConfig(config) {
+    console.log('HassBeam Card: setConfig aufgerufen', config);
+    
     if (!config) {
       throw new Error('Invalid configuration');
     }
@@ -9,60 +28,98 @@ class HassBeamCard extends HTMLElement {
     this.config = config;
     this.irCodes = [];
 
-    // Aktuelle Werte für Filter und Limit
+    // Aktuelle Werte für Filter und Limit initialisieren
     this.currentDevice = config.device || '';
     this.currentLimit = config.limit || 10;
+
+    console.log('HassBeam Card: Konfiguration gesetzt', {
+      device: this.currentDevice,
+      limit: this.currentLimit,
+      show_table: config.show_table
+    });
 
     this.createCard();
     this.attachEventListeners();
   }
 
+  /**
+   * Erstellt das HTML der Karte
+   */
   createCard() {
     const showTable = this.config.show_table !== false;
-    const maxRows = this.currentLimit;
     const cardHeight = this.config.height || 'auto';
     const cardWidth = this.config.width || 'auto';
     const tableHeight = this.config.table_height || '400px';
 
-    this.innerHTML = `
+    this.innerHTML = this.generateCardHTML(showTable, cardHeight, cardWidth, tableHeight);
+  }
+
+  /**
+   * Generiert das HTML für die Karte
+   * @param {boolean} showTable - Soll die Tabelle angezeigt werden
+   * @param {string} cardHeight - Höhe der Karte
+   * @param {string} cardWidth - Breite der Karte
+   * @param {string} tableHeight - Höhe der Tabelle
+   * @returns {string} HTML-String
+   */
+  generateCardHTML(showTable, cardHeight, cardWidth, tableHeight) {
+    return `
       <ha-card header="${this.config.title || 'HassBeam Card'}" style="height: ${cardHeight}; width: ${cardWidth};">
         <div class="card-content">
-                 
-          ${showTable ? `
-          <div class="table-controls">
-            <div class="filter-section">
-              <label>Gerät filtern:</label>
-              <input type="text" id="device-filter" placeholder="Gerätename eingeben..." value="${this.currentDevice}" />
-              <label>Limit:</label>
-              <input type="number" id="limit-input" min="1" max="100" value="${maxRows}" />
-              <button id="refresh-btn">Aktualisieren</button>
-            </div>
-          </div>
-          
-          <div class="table-container" style="max-height: ${tableHeight};">
-            <table id="ir-codes-table">
-              <thead>
-                <tr>
-                  <th>Zeitstempel</th>
-                  <th>Gerät</th>
-                  <th>Aktion</th>
-                  <th>Protocol</th>
-                  <th>Event Data</th>
-                </tr>
-              </thead>
-              <tbody id="table-body">
-                <tr>
-                  <td colspan="5" style="text-align: center; padding: 20px;">
-                    Daten werden geladen...
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          ` : ''}
+          ${showTable ? this.generateTableHTML(tableHeight) : ''}
         </div>
       </ha-card>
+      ${this.generateCSS(cardWidth, cardHeight)}
+    `;
+  }
+
+  /**
+   * Generiert das HTML für die Tabelle und Steuerelemente
+   * @param {string} tableHeight - Höhe der Tabelle
+   * @returns {string} HTML-String
+   */
+  generateTableHTML(tableHeight) {
+    return `
+      <div class="table-controls">
+        <div class="filter-section">
+          <label>Gerät filtern:</label>
+          <input type="text" id="device-filter" placeholder="Gerätename eingeben..." value="${this.currentDevice}" />
+          <label>Limit:</label>
+          <input type="number" id="limit-input" min="1" max="100" value="${this.currentLimit}" />
+          <button id="refresh-btn">Aktualisieren</button>
+        </div>
+      </div>
       
+      <div class="table-container" style="max-height: ${tableHeight};">
+        <table id="ir-codes-table">
+          <thead>
+            <tr>
+              <th>Zeitstempel</th>
+              <th>Gerät</th>
+              <th>Aktion</th>
+              <th>Protocol</th>
+              <th>Event Data</th>
+            </tr>
+          </thead>
+          <tbody id="table-body">
+            <tr>
+              <td colspan="5" style="text-align: center; padding: 20px;">
+                Daten werden geladen...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+  /**
+   * Generiert das CSS für die Karte
+   * @param {string} cardWidth - Breite der Karte
+   * @param {string} cardHeight - Höhe der Karte
+   * @returns {string} CSS-String
+   */
+  generateCSS(cardWidth, cardHeight) {
+    return `
       <style>
         ha-card {
           width: ${cardWidth};
@@ -72,12 +129,6 @@ class HassBeamCard extends HTMLElement {
         
         .card-content {
           padding: 16px;
-        }
-        
-        .status-section {
-          margin-bottom: 16px;
-          padding-bottom: 16px;
-          border-bottom: 1px solid var(--divider-color);
         }
         
         .table-controls {
@@ -95,21 +146,19 @@ class HassBeamCard extends HTMLElement {
           font-weight: 500;
         }
         
-        .filter-section input[type="text"] {
+        .filter-section input {
           padding: 6px 8px;
           border: 1px solid var(--divider-color);
           border-radius: 4px;
           background: var(--card-background-color);
           color: var(--primary-text-color);
+        }
+        
+        .filter-section input[type="text"] {
           min-width: 150px;
         }
         
         .filter-section input[type="number"] {
-          padding: 6px 8px;
-          border: 1px solid var(--divider-color);
-          border-radius: 4px;
-          background: var(--card-background-color);
-          color: var(--primary-text-color);
           width: 60px;
         }
         
@@ -128,8 +177,7 @@ class HassBeamCard extends HTMLElement {
         }
         
         .table-container {
-          overflow-x: auto;
-          overflow-y: auto;
+          overflow: auto;
           border: 1px solid var(--divider-color);
           border-radius: 4px;
         }
@@ -138,13 +186,29 @@ class HassBeamCard extends HTMLElement {
           width: 100%;
           border-collapse: collapse;
           font-size: 14px;
+          table-layout: fixed;
         }
+        
+        /* Spaltenbreiten */
+        #ir-codes-table th:nth-child(1),
+        #ir-codes-table td:nth-child(1) { width: 12.5%; }
+        #ir-codes-table th:nth-child(2),
+        #ir-codes-table td:nth-child(2) { width: 12.5%; }
+        #ir-codes-table th:nth-child(3),
+        #ir-codes-table td:nth-child(3) { width: 12.5%; }
+        #ir-codes-table th:nth-child(4),
+        #ir-codes-table td:nth-child(4) { width: 12.5%; }
+        #ir-codes-table th:nth-child(5),
+        #ir-codes-table td:nth-child(5) { width: 50%; }
         
         #ir-codes-table th,
         #ir-codes-table td {
           padding: 8px 12px;
           text-align: left;
           border-bottom: 1px solid var(--divider-color);
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
         
         #ir-codes-table th {
@@ -159,7 +223,6 @@ class HassBeamCard extends HTMLElement {
         }
         
         .timestamp {
-          white-space: nowrap;
           font-family: monospace;
           font-size: 12px;
         }
@@ -179,10 +242,6 @@ class HassBeamCard extends HTMLElement {
         }
         
         .event-data {
-          max-width: 200px;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
           font-family: monospace;
           font-size: 12px;
         }
@@ -193,109 +252,171 @@ class HassBeamCard extends HTMLElement {
           background: var(--card-background-color);
           position: relative;
           z-index: 1;
+          word-break: break-all;
         }
       </style>
     `;
   }
 
+  /**
+   * Event-Listener für UI-Elemente hinzufügen
+   */
   attachEventListeners() {
-    // Aktualisieren-Button
+    console.log('HassBeam Card: attachEventListeners aufgerufen');
+    
     const refreshBtn = this.querySelector('#refresh-btn');
     if (refreshBtn) {
+      console.log('HassBeam Card: Refresh-Button Event-Listener hinzugefügt');
       refreshBtn.addEventListener('click', () => {
-        // Werte direkt aus den Input-Feldern auslesen
-        const deviceFilter = this.querySelector('#device-filter');
-        const limitInput = this.querySelector('#limit-input');
-
-        this.currentDevice = deviceFilter ? deviceFilter.value : '';
-        this.currentLimit = limitInput ? limitInput.value : '10';
-
+        console.log('HassBeam Card: Refresh-Button geklickt');
+        this.updateFiltersFromUI();
         this.loadIrCodes();
       });
+    } else {
+      console.warn('HassBeam Card: Refresh-Button nicht gefunden');
+    }
+  }
+
+  /**
+   * Filter- und Limit-Werte aus den UI-Elementen lesen
+   */
+  updateFiltersFromUI() {
+    console.log('HassBeam Card: updateFiltersFromUI aufgerufen');
+    
+    const deviceFilter = this.querySelector('#device-filter');
+    const limitInput = this.querySelector('#limit-input');
+
+    const oldDevice = this.currentDevice;
+    const oldLimit = this.currentLimit;
+
+    this.currentDevice = deviceFilter?.value || '';
+    this.currentLimit = limitInput?.value || '10';
+
+    console.log('HassBeam Card: Filter aktualisiert', {
+      device: { alt: oldDevice, neu: this.currentDevice },
+      limit: { alt: oldLimit, neu: this.currentLimit }
+    });
+  }
+
+  /**
+   * Home Assistant Objekt setzen und Daten laden
+   * @param {Object} hass - Home Assistant Objekt
+   */
+  set hass(hass) {
+    console.log('HassBeam Card: hass Objekt gesetzt', hass ? 'verfügbar' : 'nicht verfügbar');
+    
+    this._hass = hass;
+    if (hass) {
+      console.log('HassBeam Card: loadIrCodes wird automatisch aufgerufen');
+      this.loadIrCodes();
+    }
+  }
+
+  /**
+   * IR-Codes vom HassBeam Service laden
+   */
+  async loadIrCodes() {
+    console.log('HassBeam Card: loadIrCodes aufgerufen');
+    
+    if (!this._hass) {
+      console.warn('HassBeam Card: Kein hass Objekt verfügbar, loadIrCodes wird beendet');
+      return;
     }
 
-    // Input-Event-Listener werden nicht mehr benötigt
-  }
-
-  set hass(hass) {
-    this._hass = hass;
-    this.loadIrCodes();
-  }
-
-  async loadIrCodes() {
-    if (!this._hass) return;
-
     try {
-      const deviceFilter = this.currentDevice || '';
-      const limit = parseInt(this.currentLimit) || 10;
-
-      const serviceData = {
-        limit: limit
-      };
-
-      // Nur device hinzufügen, wenn es nicht leer ist
-      if (deviceFilter.trim()) {
-        serviceData.device = deviceFilter.trim();
-      }
-
-      // Variable für Unsubscribe-Funktion und State
+      const serviceData = this.prepareServiceData();
+      console.log('HassBeam Card: Service-Daten vorbereitet', serviceData);
+      
+      // Event-Listener für die Service-Response
       let unsubscribe = null;
       let hasReceived = false;
-      let timeoutId = null;
-
-      // Cleanup-Funktion
+      
       const cleanup = () => {
+        console.log('HassBeam Card: Cleanup-Funktion aufgerufen', { hasReceived });
         hasReceived = true;
-        if (timeoutId) {
-          clearTimeout(timeoutId);
-          timeoutId = null;
-        }
-        if (unsubscribe && typeof unsubscribe === 'function') {
-          try {
-            unsubscribe();
-          } catch (e) {
-            console.warn('Fehler beim unsubscribe:', e);
-          }
-          unsubscribe = null;
+        if (unsubscribe) {
+          console.log('HassBeam Card: Event-Subscription wird beendet');
+          unsubscribe();
         }
       };
 
-      // Event-Listener für die Service-Response
-      try {
-        unsubscribe = this._hass.connection.subscribeEvents((event) => {
-          if (event.data && event.data.codes && !hasReceived) {
-            this.irCodes = event.data.codes;
-            this.updateTable();
-            cleanup();
-          }
-        }, 'hassbeam_connect_codes_retrieved');
-      } catch (subscribeError) {
-        console.error('Fehler beim Event-Subscribe:', subscribeError);
-      }
+      // Event-Subscription
+      console.log('HassBeam Card: Event-Subscription wird eingerichtet für "hassbeam_connect_codes_retrieved"');
+      unsubscribe = this._hass.connection.subscribeEvents((event) => {
+        console.log('HassBeam Card: Event "hassbeam_connect_codes_retrieved" empfangen', event);
+        
+        if (event.data?.codes && !hasReceived) {
+          console.log('HassBeam Card: Gültige IR-Codes empfangen', {
+            anzahl: event.data.codes.length,
+            codes: event.data.codes
+          });
+          
+          this.irCodes = event.data.codes;
+          this.updateTable();
+          cleanup();
+        } else {
+          console.log('HassBeam Card: Event ohne gültige Codes oder bereits empfangen', {
+            hasCodes: !!event.data?.codes,
+            hasReceived: hasReceived
+          });
+        }
+      }, 'hassbeam_connect_codes_retrieved');
+
+      console.log('HassBeam Card: Event-Subscription erfolgreich eingerichtet');
 
       // Service aufrufen
+      console.log('HassBeam Card: Service "hassbeam_connect.get_recent_codes" wird aufgerufen', serviceData);
       await this._hass.callService('hassbeam_connect', 'get_recent_codes', serviceData);
+      console.log('HassBeam Card: Service-Aufruf erfolgreich abgeschlossen');
 
       // Timeout als Fallback
-      timeoutId = setTimeout(() => {
+      console.log('HassBeam Card: Timeout (5s) wird eingerichtet');
+      setTimeout(() => {
         if (!hasReceived) {
+          console.error('HassBeam Card: Timeout erreicht - keine Daten empfangen');
           this.showError('Keine Daten empfangen (Timeout)');
           cleanup();
+        } else {
+          console.log('HassBeam Card: Timeout erreicht aber Daten bereits empfangen');
         }
       }, 5000);
 
     } catch (error) {
-      console.error('Fehler beim Laden der IR-Codes:', error);
+      console.error('HassBeam Card: Fehler beim Laden der IR-Codes:', error);
       this.showError('Fehler beim Laden der Daten: ' + error.message);
     }
   }
 
+  /**
+   * Service-Daten für den API-Aufruf vorbereiten
+   * @returns {Object} Service-Daten
+   */
+  prepareServiceData() {
+    console.log('HassBeam Card: prepareServiceData aufgerufen', {
+      currentDevice: this.currentDevice,
+      currentLimit: this.currentLimit
+    });
+    
+    const serviceData = { limit: parseInt(this.currentLimit) || 10 };
+    
+    if (this.currentDevice?.trim()) {
+      serviceData.device = this.currentDevice.trim();
+      console.log('HassBeam Card: Gerätename zu Service-Daten hinzugefügt', serviceData.device);
+    }
+
+    console.log('HassBeam Card: Service-Daten vorbereitet', serviceData);
+    return serviceData;
+  }
+
+  /**
+   * Tabelle mit neuen Daten aktualisieren
+   */
   updateTable() {
     const tableBody = this.querySelector('#table-body');
-    const codeCountEl = this.querySelector('#code-count');
-
     if (!tableBody) return;
 
+    // Code-Anzahl aktualisieren (falls Element vorhanden)
+    const codeCountEl = this.querySelector('#code-count');
     if (codeCountEl) {
       codeCountEl.innerText = this.irCodes.length;
     }
@@ -311,47 +432,56 @@ class HassBeamCard extends HTMLElement {
       return;
     }
 
-    tableBody.innerHTML = this.irCodes.map(code => {
-      // Das neue Format: Objekt mit Eigenschaften
-      const id = code.id;
-      const device = code.device;
-      const action = code.action;
-      const eventData = code.event_data;
-      const createdAt = code.created_at;
-
-      const timestamp = new Date(createdAt).toLocaleString('de-DE');
-
-      // Protocol aus Event Data extrahieren
-      let protocol = 'N/A';
-      let formattedEventData = eventData;
-      
-      try {
-        const parsed = JSON.parse(eventData);
-        protocol = parsed.protocol || 'N/A';
-        
-        // Event Data formatieren (ohne protocol, da es in eigener Spalte steht)
-        const filteredData = { ...parsed };
-        delete filteredData.protocol;
-        
-        formattedEventData = Object.keys(filteredData).map(key =>
-          `${key}: ${filteredData[key]}`
-        ).join(', ');
-      } catch (e) {
-        // Fallback zu originalem String
-      }
-
-      return `
-        <tr>
-          <td class="timestamp">${timestamp}</td>
-          <td class="device">${device}</td>
-          <td class="action">${action}</td>
-          <td class="protocol">${protocol}</td>
-          <td class="event-data" title="${formattedEventData}">${formattedEventData}</td>
-        </tr>
-      `;
-    }).join('');
+    tableBody.innerHTML = this.irCodes.map(code => this.createTableRow(code)).join('');
   }
 
+  /**
+   * Einzelne Tabellenzeile erstellen
+   * @param {Object} code - IR-Code-Objekt
+   * @returns {string} HTML-String für die Tabellenzeile
+   */
+  createTableRow(code) {
+    const timestamp = new Date(code.created_at).toLocaleString('de-DE');
+    const { protocol, formattedEventData } = this.parseEventData(code.event_data);
+
+    return `
+      <tr>
+        <td class="timestamp">${timestamp}</td>
+        <td class="device">${code.device}</td>
+        <td class="action">${code.action}</td>
+        <td class="protocol">${protocol}</td>
+        <td class="event-data" title="${formattedEventData}">${formattedEventData}</td>
+      </tr>
+    `;
+  }
+
+  /**
+   * Event-Daten parsen und formatieren
+   * @param {string} eventData - JSON-String mit Event-Daten
+   * @returns {Object} Geparste Daten mit Protocol und formatierten Event-Daten
+   */
+  parseEventData(eventData) {
+    try {
+      const parsed = JSON.parse(eventData);
+      const protocol = parsed.protocol || 'N/A';
+      
+      // Protocol aus den Event-Daten entfernen
+      const { protocol: _, ...filteredData } = parsed;
+      
+      const formattedEventData = Object.entries(filteredData)
+        .map(([key, value]) => `${key}: ${value}`)
+        .join(', ');
+      
+      return { protocol, formattedEventData };
+    } catch (e) {
+      return { protocol: 'N/A', formattedEventData: eventData };
+    }
+  }
+
+  /**
+   * Kartengröße für das Dashboard zurückgeben
+   * @returns {number} Kartengröße
+   */
   getCardSize() {
     // Konfigurierbare Kartengröße
     // Standardwerte: 6 für Karten mit Tabelle, 1 für Karten ohne Tabelle
@@ -361,6 +491,10 @@ class HassBeamCard extends HTMLElement {
     return this.config.show_table !== false ? 6 : 1;
   }
 
+  /**
+   * Fehlermeldung in der Tabelle anzeigen
+   * @param {string} message - Fehlermeldung
+   */
   showError(message) {
     const tableBody = this.querySelector('#table-body');
     if (tableBody) {
@@ -374,7 +508,10 @@ class HassBeamCard extends HTMLElement {
     }
   }
 
-  // Für bessere HACS-Kompatibilität
+  /**
+   * Eigenschaften für bessere HACS-Kompatibilität
+   * @returns {Object} Eigenschaften-Objekt
+   */
   static get properties() {
     return {
       hass: {},
