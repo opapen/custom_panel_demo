@@ -96,10 +96,10 @@ class HassBeamCard extends HTMLElement {
         <table id="ir-codes-table">
           <colgroup>
             <col style="width: 10%; min-width: 150px;">
-            <col style="width: 5%; min-width: 150px;">
-            <col style="width: 5%; min-width: 150px;">
-            <col style="width: 5%; min-width: 150px;">
-            <col style="width: 75%;min-width: 500px;">
+            <col style="width: 5%; min-width: 100px;">
+            <col style="width: 5%; min-width: 100px;">
+            <col style="width: 5%; min-width: 100px;">
+            <col style="width: 75%;min-width: 630px;">
           </colgroup>
           <thead>
             <tr>
