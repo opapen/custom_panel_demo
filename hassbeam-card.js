@@ -1,5 +1,3 @@
-import './hassbeam-stats-card.js';
-
 console.info("HassBeam Card v2.0.0 geladen");
 
 /**
