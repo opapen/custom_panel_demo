@@ -110,8 +110,8 @@ class HassBeamCard extends HTMLElement {
           </thead>
           <tbody id="table-body">
             <tr>
-              <td colspan="5" style="text-align: center; padding: 20px;">
-                Daten werden geladen...
+              <td colspan="5" style="text-align: center; padding: 20px; color: var(--secondary-text-color);">
+                Klicke auf "Aktualisieren" um IR-Codes zu laden
               </td>
             </tr>
           </tbody>
@@ -328,17 +328,16 @@ class HassBeamCard extends HTMLElement {
   }
 
   /**
-   * Home Assistant Objekt setzen und Daten laden
+   * Home Assistant Objekt setzen
    * @param {Object} hass - Home Assistant Objekt
    */
   set hass(hass) {
     console.log('HassBeam Card: hass Objekt gesetzt', hass ? 'verfügbar' : 'nicht verfügbar');
     
     this._hass = hass;
-    if (hass) {
-      console.log('HassBeam Card: loadIrCodes wird automatisch aufgerufen');
-      this.loadIrCodes();
-    }
+    
+    // Kein automatisches Laden - nur manuell über Refresh-Button
+    console.log('HassBeam Card: Automatisches Laden deaktiviert - verwende Refresh-Button');
   }
 
   /**
