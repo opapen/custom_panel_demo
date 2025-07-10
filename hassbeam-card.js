@@ -190,31 +190,24 @@ class HassBeamCard extends HTMLElement {
     // Aktualisieren-Button
     const refreshBtn = this.querySelector('#refresh-btn');
     if (refreshBtn) {
-      refreshBtn.addEventListener('click', () => this.loadIrCodes());
-    }
-    
-    // Geräte-Filter (Text-Input) - nur Wert speichern, nicht laden
-    const deviceFilter = this.querySelector('#device-filter');
-    if (deviceFilter) {
-      deviceFilter.addEventListener('input', (e) => {
-        this.currentDevice = e.target.value;
-        // Kein automatisches loadIrCodes() mehr
+      refreshBtn.addEventListener('click', () => {
+        // Werte direkt aus den Input-Feldern auslesen
+        const deviceFilter = this.querySelector('#device-filter');
+        const limitInput = this.querySelector('#limit-input');
+        
+        this.currentDevice = deviceFilter ? deviceFilter.value : '';
+        this.currentLimit = limitInput ? limitInput.value : '10';
+        
+        this.loadIrCodes();
       });
     }
     
-    // Limit-Input - nur Wert speichern, nicht laden
-    const limitInput = this.querySelector('#limit-input');
-    if (limitInput) {
-      limitInput.addEventListener('change', (e) => {
-        this.currentLimit = parseInt(e.target.value) || 10;
-        // Kein automatisches loadIrCodes() mehr
-      });
-    }
+    // Input-Event-Listener werden nicht mehr benötigt
   }
 
   set hass(hass) {
     this._hass = hass;
-    //this.loadIrCodes();
+    this.loadIrCodes();
   }
 
   async loadIrCodes() {
@@ -222,7 +215,7 @@ class HassBeamCard extends HTMLElement {
     
     try {
       const deviceFilter = this.currentDevice || '';
-      const limit = this.currentLimit || 10;
+      const limit = parseInt(this.currentLimit) || 10;
       
       const serviceData = {
         limit: limit
@@ -233,22 +226,35 @@ class HassBeamCard extends HTMLElement {
         serviceData.device = deviceFilter.trim();
       }
       
-      // Variable für Unsubscribe-Funktion
+      // Variable für Unsubscribe-Funktion und State
       let unsubscribe = null;
       let hasReceived = false;
+      let timeoutId = null;
+      
+      // Cleanup-Funktion
+      const cleanup = () => {
+        hasReceived = true;
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+        if (unsubscribe && typeof unsubscribe === 'function') {
+          try {
+            unsubscribe();
+          } catch (e) {
+            console.warn('Fehler beim unsubscribe:', e);
+          }
+          unsubscribe = null;
+        }
+      };
       
       // Event-Listener für die Service-Response
       try {
         unsubscribe = this._hass.connection.subscribeEvents((event) => {
           if (event.data && event.data.codes && !hasReceived) {
-            hasReceived = true;
             this.irCodes = event.data.codes;
             this.updateTable();
-            
-            // Event-Listener entfernen nach erfolgreichem Empfang
-            if (unsubscribe && typeof unsubscribe === 'function') {
-              unsubscribe();
-            }
+            cleanup();
           }
         }, 'hassbeam_connect_codes_retrieved');
       } catch (subscribeError) {
@@ -259,12 +265,10 @@ class HassBeamCard extends HTMLElement {
       await this._hass.callService('hassbeam_connect', 'get_recent_codes', serviceData);
       
       // Timeout als Fallback
-      setTimeout(() => {
+      timeoutId = setTimeout(() => {
         if (!hasReceived) {
-          if (unsubscribe && typeof unsubscribe === 'function') {
-            unsubscribe();
-          }
           this.showError('Keine Daten empfangen (Timeout)');
+          cleanup();
         }
       }, 5000);
       
