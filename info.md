@@ -42,8 +42,8 @@ type: custom:hassbeam-card
 title: "IR Remote Control"
 entity: sensor.hassbeam_last_ir  # Optional: Angepasste Entity
 show_table: true                 # Optional: Tabelle anzeigen (Standard: true)
-max_rows: 50                     # Optional: Maximale Anzahl Zeilen (Standard: 50)
-filter_device: "TV"              # Optional: Nur bestimmtes Gerät anzeigen
+limit: 25                        # Optional: Anzahl der abzurufenden Codes (Standard: 10)
+device: "TV"                     # Optional: Gerätename für Filterung
 ```
 
 ### Konfigurationsoptionen
@@ -53,15 +53,16 @@ filter_device: "TV"              # Optional: Nur bestimmtes Gerät anzeigen
 | `title` | string | "HassBeam Card" | Titel der Card |
 | `entity` | string | "sensor.hassbeam_last_ir" | Entity für Status-Info |
 | `show_table` | boolean | true | Tabelle mit IR-Codes anzeigen |
-| `max_rows` | number | 50 | Maximale Anzahl Tabellenzeilen |
-| `filter_device` | string | - | Nur bestimmtes Gerät anzeigen |
+| `limit` | number | 10 | Anzahl der abzurufenden Codes (1-100) |
+| `device` | string | - | Gerätename für Filterung |
 
 ## Features
 
 - **Status-Anzeige**: Zeigt das letzte IR-Event und den Status an
 - **IR-Code-Tabelle**: Vollständige Übersicht aller gespeicherten IR-Codes
-- **Geräte-Filter**: Filterung nach spezifischen Geräten
-- **Live-Aktualisierung**: Automatische Aktualisierung der Daten
+- **Interaktive Filter**: Freitextfeld für Geräte-Filterung
+- **Dynamisches Limit**: Einstellbare Anzahl der angezeigten Codes
+- **Live-Konfiguration**: Änderungen werden sofort übernommen
 - **Responsive Design**: Optimiert für verschiedene Bildschirmgrößen
 
 ## Tabellen-Spalten
@@ -72,6 +73,12 @@ Die Tabelle zeigt folgende Informationen:
 - **Gerät**: Name des Geräts
 - **Aktion**: Ausgeführte Aktion
 - **Event Data**: JSON-Daten des Events (hover für Details)
+
+## Interaktive Bedienung
+
+- **Gerät filtern**: Freitextfeld für Gerätenamen (automatische Filterung)
+- **Limit anpassen**: Anzahl der angezeigten Codes (1-100)
+- **Aktualisieren**: Manuell neue Daten laden
 
 ## Voraussetzungen
 
@@ -102,9 +109,21 @@ data:
 
 ```json
 {
-  "response": [
-    [1, "TV", "power_on", "{\"protocol\": \"NEC\", \"code\": \"0x123456\"}", "2025-07-10 14:30:25"],
-    [2, "TV", "volume_up", "{\"protocol\": \"NEC\", \"code\": \"0x789ABC\"}", "2025-07-10 14:31:10"]
+  "codes": [
+    {
+      "id": 1,
+      "device": "TV",
+      "action": "power_on",
+      "event_data": "{\"protocol\": \"NEC\", \"code\": \"0x123456\"}",
+      "created_at": "2025-07-10 14:30:25"
+    },
+    {
+      "id": 2,
+      "device": "TV",
+      "action": "volume_up",
+      "event_data": "{\"protocol\": \"NEC\", \"code\": \"0x789ABC\"}",
+      "created_at": "2025-07-10 14:31:10"
+    }
   ]
 }
 ```

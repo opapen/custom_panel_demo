@@ -8,8 +8,9 @@ Eine einfache Custom Lovelace Card zur Anzeige von IR-Events mit HassBeam.
 
 - **Status-Anzeige**: Zeigt das letzte IR-Event und den Status an
 - **IR-Code-Tabelle**: Vollständige Übersicht aller gespeicherten IR-Codes aus der HassBeam-Datenbank
-- **Geräte-Filter**: Filterung nach spezifischen Geräten
-- **Live-Aktualisierung**: Automatische Aktualisierung der Daten
+- **Interaktive Filter**: Freitextfeld für Geräte-Filterung in Echtzeit
+- **Dynamisches Limit**: Einstellbare Anzahl der angezeigten Codes (1-100)
+- **Live-Konfiguration**: Änderungen werden sofort übernommen
 - **Responsive Design**: Optimiert für verschiedene Bildschirmgrößen
 - **Hover-Details**: Vollständige Event-Daten beim Überfahren mit der Maus
 
@@ -53,8 +54,8 @@ type: custom:hassbeam-card
 title: "IR Remote Control"
 entity: sensor.hassbeam_last_ir  # Optional: Angepasste Entity
 show_table: true                 # Optional: Tabelle anzeigen (Standard: true)
-max_rows: 50                     # Optional: Maximale Anzahl Zeilen (Standard: 50)
-filter_device: "TV"              # Optional: Nur bestimmtes Gerät anzeigen
+limit: 25                        # Optional: Anzahl der abzurufenden Codes (Standard: 10)
+device: "TV"                     # Optional: Gerätename für Filterung
 ```
 
 ### Konfigurationsoptionen
@@ -64,8 +65,8 @@ filter_device: "TV"              # Optional: Nur bestimmtes Gerät anzeigen
 | `title` | string | "HassBeam Card" | Titel der Card |
 | `entity` | string | "sensor.hassbeam_last_ir" | Entity für Status-Info |
 | `show_table` | boolean | true | Tabelle mit IR-Codes anzeigen |
-| `max_rows` | number | 50 | Maximale Anzahl Tabellenzeilen |
-| `filter_device` | string | - | Nur bestimmtes Gerät anzeigen |
+| `limit` | number | 10 | Anzahl der abzurufenden Codes (1-100) |
+| `device` | string | - | Gerätename für Filterung |
 
 ## Voraussetzungen
 

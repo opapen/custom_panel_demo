@@ -14,7 +14,7 @@ class HassBeamCard extends HTMLElement {
 
   createCard() {
     const showTable = this.config.show_table !== false;
-    const maxRows = this.config.max_rows || 10;
+    const maxRows = this.config.limit || 10;
     
     this.innerHTML = `
       <ha-card header="${this.config.title || 'HassBeam Card'}">
@@ -29,9 +29,9 @@ class HassBeamCard extends HTMLElement {
           <div class="table-controls">
             <div class="filter-section">
               <label>Gerät filtern:</label>
-              <select id="device-filter">
-                <option value="">Alle Geräte</option>
-              </select>
+              <input type="text" id="device-filter" placeholder="Gerätename eingeben..." value="${this.config.device || ''}" />
+              <label>Limit:</label>
+              <input type="number" id="limit-input" min="1" max="100" value="${maxRows}" />
               <button id="refresh-btn">Aktualisieren</button>
             </div>
           </div>
@@ -85,12 +85,22 @@ class HassBeamCard extends HTMLElement {
           font-weight: 500;
         }
         
-        .filter-section select {
-          padding: 4px 8px;
+        .filter-section input[type="text"] {
+          padding: 6px 8px;
           border: 1px solid var(--divider-color);
           border-radius: 4px;
           background: var(--card-background-color);
           color: var(--primary-text-color);
+          min-width: 150px;
+        }
+        
+        .filter-section input[type="number"] {
+          padding: 6px 8px;
+          border: 1px solid var(--divider-color);
+          border-radius: 4px;
+          background: var(--card-background-color);
+          color: var(--primary-text-color);
+          width: 60px;
         }
         
         .filter-section button {
@@ -178,11 +188,21 @@ class HassBeamCard extends HTMLElement {
       refreshBtn.addEventListener('click', () => this.loadIrCodes());
     }
     
-    // Geräte-Filter
+    // Geräte-Filter (Text-Input)
     const deviceFilter = this.querySelector('#device-filter');
     if (deviceFilter) {
-      deviceFilter.addEventListener('change', (e) => {
-        this.filterByDevice(e.target.value);
+      deviceFilter.addEventListener('input', (e) => {
+        this.config.device = e.target.value;
+        this.loadIrCodes();
+      });
+    }
+    
+    // Limit-Input
+    const limitInput = this.querySelector('#limit-input');
+    if (limitInput) {
+      limitInput.addEventListener('change', (e) => {
+        this.config.limit = parseInt(e.target.value) || 10;
+        this.loadIrCodes();
       });
     }
   }
@@ -216,19 +236,31 @@ class HassBeamCard extends HTMLElement {
     if (!this._hass) return;
     
     try {
-      const response = await this._hass.callService('hassbeam_connect', 'get_recent_codes', {
-        limit: this.config.max_rows || 50,
-        device: this.config.filter_device || null
-      });
+      const deviceFilter = this.config.device || '';
+      const limit = this.config.limit || 10;
       
-      if (response && response.response) {
-        this.irCodes = response.response;
+      const serviceData = {
+        limit: limit
+      };
+      
+      // Nur device hinzufügen, wenn es nicht leer ist
+      if (deviceFilter.trim()) {
+        serviceData.device = deviceFilter.trim();
+      }
+      
+      const response = await this._hass.callService('hassbeam_connect', 'get_recent_codes', serviceData);
+      
+      if (response && response.codes) {
+        // Das neue Format: Array von Objekten
+        this.irCodes = response.codes;
         this.updateTable();
-        this.updateDeviceFilter();
+      } else {
+        this.irCodes = [];
+        this.updateTable();
       }
     } catch (error) {
       console.error('Fehler beim Laden der IR-Codes:', error);
-      this.showError('Fehler beim Laden der Daten');
+      this.showError('Fehler beim Laden der Daten: ' + error.message);
     }
   }
 
@@ -254,7 +286,13 @@ class HassBeamCard extends HTMLElement {
     }
     
     tableBody.innerHTML = this.irCodes.map(code => {
-      const [id, device, action, eventData, createdAt] = code;
+      // Das neue Format: Objekt mit Eigenschaften
+      const id = code.id;
+      const device = code.device;
+      const action = code.action;
+      const eventData = code.event_data;
+      const createdAt = code.created_at;
+      
       const timestamp = new Date(createdAt).toLocaleString('de-DE');
       
       // Event Data formatieren
@@ -279,61 +317,8 @@ class HassBeamCard extends HTMLElement {
     }).join('');
   }
 
-  updateDeviceFilter() {
-    const deviceFilter = this.querySelector('#device-filter');
-    if (!deviceFilter) return;
-    
-    const devices = [...new Set(this.irCodes.map(code => code[1]))];
-    const currentValue = deviceFilter.value;
-    
-    deviceFilter.innerHTML = '<option value="">Alle Geräte</option>' + 
-      devices.map(device => 
-        `<option value="${device}" ${device === currentValue ? 'selected' : ''}>${device}</option>`
-      ).join('');
-  }
-
-  filterByDevice(device) {
-    const tableBody = this.querySelector('#table-body');
-    if (!tableBody) return;
-    
-    const filteredCodes = device ? 
-      this.irCodes.filter(code => code[1] === device) : 
-      this.irCodes;
-    
-    if (filteredCodes.length === 0) {
-      tableBody.innerHTML = `
-        <tr>
-          <td colspan="4" style="text-align: center; padding: 20px;">
-            Keine IR-Codes für "${device}" gefunden
-          </td>
-        </tr>
-      `;
-      return;
-    }
-    
-    tableBody.innerHTML = filteredCodes.map(code => {
-      const [id, device, action, eventData, createdAt] = code;
-      const timestamp = new Date(createdAt).toLocaleString('de-DE');
-      
-      let formattedEventData = eventData;
-      try {
-        const parsed = JSON.parse(eventData);
-        formattedEventData = Object.keys(parsed).map(key => 
-          `${key}: ${parsed[key]}`
-        ).join(', ');
-      } catch (e) {
-        // Fallback zu originalem String
-      }
-      
-      return `
-        <tr>
-          <td class="timestamp">${timestamp}</td>
-          <td class="device">${device}</td>
-          <td class="action">${action}</td>
-          <td class="event-data" title="${formattedEventData}">${formattedEventData}</td>
-        </tr>
-      `;
-    }).join('');
+  getCardSize() {
+    return this.config.show_table !== false ? 6 : 1;
   }
 
   showError(message) {
@@ -347,10 +332,6 @@ class HassBeamCard extends HTMLElement {
         </tr>
       `;
     }
-  }
-
-  getCardSize() {
-    return this.config.show_table !== false ? 6 : 1;
   }
 
   // Für bessere HACS-Kompatibilität
