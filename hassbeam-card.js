@@ -257,17 +257,38 @@ class HassBeamCard extends HTMLElement {
       const response = await this._hass.callService('hassbeam_connect', 'get_recent_codes', serviceData);
       
       console.log('Service-Response:', response);
+      console.log('Response Keys:', Object.keys(response || {}));
       
+      // Debugging: Alle Eigenschaften der Response ausgeben
+      if (response) {
+        for (const key in response) {
+          console.log(`Response[${key}]:`, response[key]);
+        }
+      }
+      
+      // Verschiedene mögliche Eigenschaften prüfen
+      let codes = null;
       if (response && response.codes) {
-        console.log('Codes gefunden:', response.codes.length, response.codes);
-        // Das neue Format: Array von Objekten
-        this.irCodes = response.codes;
+        codes = response.codes;
+        console.log('Codes gefunden in response.codes:', codes);
+      } else if (response && response.response && response.response.codes) {
+        codes = response.response.codes;
+        console.log('Codes gefunden in response.response.codes:', codes);
+      } else if (response && response.response) {
+        codes = response.response;
+        console.log('Codes gefunden in response.response:', codes);
+      }
+      
+      if (codes && Array.isArray(codes)) {
+        console.log('Codes array gefunden:', codes.length, codes);
+        this.irCodes = codes;
         this.updateTable();
       } else {
-        console.log('Keine Codes in Response oder Response ist null');
+        console.log('Keine Codes gefunden oder nicht als Array');
         this.irCodes = [];
         this.updateTable();
       }
+      
     } catch (error) {
       console.error('Fehler beim Laden der IR-Codes:', error);
       this.showError('Fehler beim Laden der Daten: ' + error.message);
