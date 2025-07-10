@@ -95,11 +95,11 @@ class HassBeamCard extends HTMLElement {
       <div class="table-container" style="max-height: ${tableHeight};">
         <table id="ir-codes-table">
           <colgroup>
-            <col style="width: 12.5% !important; min-width: 90px; max-width: 12.5%;">
-            <col style="width: 12.5% !important; min-width: 90px; max-width: 12.5%;">
-            <col style="width: 12.5% !important; min-width: 70px; max-width: 12.5%;">
-            <col style="width: 12.5% !important; min-width: 70px; max-width: 12.5%;">
-            <col style="width: 50% !important; min-width: 200px; max-width: 50%;">
+            <col style="width: 5% !important; min-width: 60px; max-width: 5%;">
+            <col style="width: 5% !important; min-width: 60px; max-width: 5%;">
+            <col style="width: 5% !important; min-width: 50px; max-width: 5%;">
+            <col style="width: 5% !important; min-width: 50px; max-width: 5%;">
+            <col style="width: 80% !important; min-width: 300px; max-width: 80%;">
           </colgroup>
           <thead>
             <tr>
@@ -200,42 +200,42 @@ class HassBeamCard extends HTMLElement {
         }
         
         /* Explizite Spaltenbreiten mit wichtigster Priorität */
-        #ir-codes-table col:nth-child(1) { width: 12.5% !important; }
-        #ir-codes-table col:nth-child(2) { width: 12.5% !important; }
-        #ir-codes-table col:nth-child(3) { width: 12.5% !important; }
-        #ir-codes-table col:nth-child(4) { width: 12.5% !important; }
-        #ir-codes-table col:nth-child(5) { width: 50% !important; }
+        #ir-codes-table col:nth-child(1) { width: 5% !important; }
+        #ir-codes-table col:nth-child(2) { width: 5% !important; }
+        #ir-codes-table col:nth-child(3) { width: 5% !important; }
+        #ir-codes-table col:nth-child(4) { width: 5% !important; }
+        #ir-codes-table col:nth-child(5) { width: 80% !important; }
         
         /* Doppelte Absicherung über th/td */
         #ir-codes-table th:nth-child(1),
         #ir-codes-table td:nth-child(1) { 
-          width: 12.5% !important; 
-          max-width: 12.5% !important;
-          min-width: 90px !important;
+          width: 5% !important; 
+          max-width: 5% !important;
+          min-width: 70px !important;
         }
         #ir-codes-table th:nth-child(2),
         #ir-codes-table td:nth-child(2) { 
-          width: 12.5% !important; 
-          max-width: 12.5% !important;
-          min-width: 90px !important;
+          width: 5% !important; 
+          max-width: 5% !important;
+          min-width: 70px !important;
         }
         #ir-codes-table th:nth-child(3),
         #ir-codes-table td:nth-child(3) { 
-          width: 12.5% !important; 
-          max-width: 12.5% !important;
-          min-width: 70px !important;
+          width: 5% !important; 
+          max-width: 5% !important;
+          min-width: 60px !important;
         }
         #ir-codes-table th:nth-child(4),
         #ir-codes-table td:nth-child(4) { 
-          width: 12.5% !important; 
-          max-width: 12.5% !important;
-          min-width: 70px !important;
+          width: 5% !important; 
+          max-width: 5% !important;
+          min-width: 60px !important;
         }
         #ir-codes-table th:nth-child(5),
         #ir-codes-table td:nth-child(5) { 
-          width: 50% !important; 
-          max-width: 50% !important;
-          min-width: 200px !important;
+          width: 80% !important; 
+          max-width: 80% !important;
+          min-width: 300px !important;
         }
         
         #ir-codes-table th,
@@ -585,8 +585,7 @@ class HassBeamCard extends HTMLElement {
         originalData: parsed
       });
       
-      
-      const formattedEventData = Object.entries(filteredData)
+      const formattedEventData = Object.entries(parsed)
         .map(([key, value]) => `${key}: ${value}`)
         .join(', ');
       
