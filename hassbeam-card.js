@@ -253,13 +253,18 @@ class HassBeamCard extends HTMLElement {
         serviceData.device = deviceFilter.trim();
       }
       
+      console.log('Service-Aufruf mit Daten:', serviceData);
       const response = await this._hass.callService('hassbeam_connect', 'get_recent_codes', serviceData);
       
+      console.log('Service-Response:', response);
+      
       if (response && response.codes) {
+        console.log('Codes gefunden:', response.codes.length, response.codes);
         // Das neue Format: Array von Objekten
         this.irCodes = response.codes;
         this.updateTable();
       } else {
+        console.log('Keine Codes in Response oder Response ist null');
         this.irCodes = [];
         this.updateTable();
       }
@@ -273,13 +278,19 @@ class HassBeamCard extends HTMLElement {
     const tableBody = this.querySelector('#table-body');
     const codeCountEl = this.querySelector('#code-count');
     
-    if (!tableBody) return;
+    console.log('updateTable aufgerufen mit:', this.irCodes.length, 'Codes');
+    
+    if (!tableBody) {
+      console.log('Kein table-body Element gefunden');
+      return;
+    }
     
     if (codeCountEl) {
       codeCountEl.innerText = this.irCodes.length;
     }
     
     if (this.irCodes.length === 0) {
+      console.log('Keine Codes vorhanden, zeige leere Nachricht');
       tableBody.innerHTML = `
         <tr>
           <td colspan="4" style="text-align: center; padding: 20px;">
@@ -290,8 +301,11 @@ class HassBeamCard extends HTMLElement {
       return;
     }
     
+    console.log('Erstelle Tabelle mit Codes:', this.irCodes);
+    
     tableBody.innerHTML = this.irCodes.map(code => {
       // Das neue Format: Objekt mit Eigenschaften
+      console.log('Verarbeite Code:', code);
       const id = code.id;
       const device = code.device;
       const action = code.action;
