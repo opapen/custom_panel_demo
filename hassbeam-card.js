@@ -254,40 +254,33 @@ class HassBeamCard extends HTMLElement {
       }
       
       console.log('Service-Aufruf mit Daten:', serviceData);
-      const response = await this._hass.callService('hassbeam_connect', 'get_recent_codes', serviceData);
       
-      console.log('Service-Response:', response);
-      console.log('Response Keys:', Object.keys(response || {}));
-      
-      // Debugging: Alle Eigenschaften der Response ausgeben
-      if (response) {
-        for (const key in response) {
-          console.log(`Response[${key}]:`, response[key]);
+      // Event-Listener für die Service-Response
+      const unsubscribe = this._hass.connection.subscribeEvents((event) => {
+        console.log('Event empfangen:', event);
+        if (event.data && event.data.codes) {
+          console.log('Codes aus Event:', event.data.codes.length, event.data.codes);
+          this.irCodes = event.data.codes;
+          this.updateTable();
+          
+          // Event-Listener entfernen nach erfolgreichem Empfang
+          unsubscribe();
         }
-      }
+      }, 'hassbeam_connect_codes_retrieved');
       
-      // Verschiedene mögliche Eigenschaften prüfen
-      let codes = null;
-      if (response && response.codes) {
-        codes = response.codes;
-        console.log('Codes gefunden in response.codes:', codes);
-      } else if (response && response.response && response.response.codes) {
-        codes = response.response.codes;
-        console.log('Codes gefunden in response.response.codes:', codes);
-      } else if (response && response.response) {
-        codes = response.response;
-        console.log('Codes gefunden in response.response:', codes);
-      }
+      // Service aufrufen
+      await this._hass.callService('hassbeam_connect', 'get_recent_codes', serviceData);
       
-      if (codes && Array.isArray(codes)) {
-        console.log('Codes array gefunden:', codes.length, codes);
-        this.irCodes = codes;
-        this.updateTable();
-      } else {
-        console.log('Keine Codes gefunden oder nicht als Array');
-        this.irCodes = [];
-        this.updateTable();
-      }
+      console.log('Service aufgerufen, warte auf Event...');
+      
+      // Timeout als Fallback
+      setTimeout(() => {
+        if (this.irCodes.length === 0) {
+          console.log('Timeout: Keine Codes über Event empfangen');
+          unsubscribe();
+          this.showError('Keine Daten empfangen (Timeout)');
+        }
+      }, 5000);
       
     } catch (error) {
       console.error('Fehler beim Laden der IR-Codes:', error);
