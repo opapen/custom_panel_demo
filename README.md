@@ -70,8 +70,9 @@ filter_device: "TV"              # Optional: Nur bestimmtes Gerät anzeigen
 ## Voraussetzungen
 
 - Home Assistant mit Lovelace UI
-- HassBeam Integration installiert
-- Entity `sensor.hassbeam_last_ir` verfügbar
+- HassBeam Connect Integration installiert
+- Service `hassbeam_connect.get_recent_codes` verfügbar
+- Entity `sensor.hassbeam_last_ir` verfügbar (optional)
 
 ## Screenshot
 

@@ -216,7 +216,7 @@ class HassBeamCard extends HTMLElement {
     if (!this._hass) return;
     
     try {
-      const response = await this._hass.callService('hassbeam_connect', 'get_ir_codes', {
+      const response = await this._hass.callService('hassbeam_connect', 'get_recent_codes', {
         limit: this.config.max_rows || 50,
         device: this.config.filter_device || null
       });

@@ -76,8 +76,38 @@ Die Tabelle zeigt folgende Informationen:
 ## Voraussetzungen
 
 - Home Assistant mit Lovelace UI
-- HassBeam Integration installiert
-- Entity `sensor.hassbeam_last_ir` verfügbar
+- HassBeam Connect Integration installiert
+- Service `hassbeam_connect.get_recent_codes` verfügbar
+- Entity `sensor.hassbeam_last_ir` verfügbar (optional)
+
+## Service-Integration
+
+Die Card nutzt den Service `hassbeam_connect.get_recent_codes` um die IR-Code-Daten zu laden.
+
+### Service-Parameter
+
+- `device` (optional): Filtert nach einem bestimmten Gerät
+- `limit` (optional, Standard: 10): Anzahl der zurückzugebenden Codes
+
+### Beispiel-Aufruf
+
+```yaml
+service: hassbeam_connect.get_recent_codes
+data:
+  device: "TV"
+  limit: 25
+```
+
+### Erwartetes Response-Format
+
+```json
+{
+  "response": [
+    [1, "TV", "power_on", "{\"protocol\": \"NEC\", \"code\": \"0x123456\"}", "2025-07-10 14:30:25"],
+    [2, "TV", "volume_up", "{\"protocol\": \"NEC\", \"code\": \"0x789ABC\"}", "2025-07-10 14:31:10"]
+  ]
+}
+```
 
 ## Unterstützung
 
