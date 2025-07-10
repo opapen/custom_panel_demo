@@ -94,6 +94,13 @@ class HassBeamCard extends HTMLElement {
       
       <div class="table-container" style="max-height: ${tableHeight};">
         <table id="ir-codes-table">
+          <colgroup>
+            <col style="width: 10%;">
+            <col style="width: 5%;">
+            <col style="width: 5%;">
+            <col style="width: 5%;">
+            <col style="width: 75%;">
+          </colgroup>
           <thead>
             <tr>
               <th>Zeitstempel</th>
@@ -192,12 +199,6 @@ class HassBeamCard extends HTMLElement {
           table-layout: fixed !important;
         }
         
-        /* Explizite Spaltenbreiten mit wichtigster Priorität */
-        #ir-codes-table col:nth-child(1) { width: 10% !important; }
-        #ir-codes-table col:nth-child(2) { width: 5% !important; }
-        #ir-codes-table col:nth-child(3) { width: 5% !important; }
-        #ir-codes-table col:nth-child(4) { width: 5% !important; }
-        #ir-codes-table col:nth-child(5) { width: 75% !important; }
         
         
         #ir-codes-table th,
