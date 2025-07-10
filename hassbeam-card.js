@@ -214,27 +214,7 @@ class HassBeamCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
-    this.updateStatus();
-    this.loadIrCodes();
-  }
-
-  updateStatus() {
-    const entityId = this.config.entity || 'sensor.hassbeam_last_ir';
-    const event = this._hass.states[entityId];
-    const eventEl = this.querySelector('#ir-event');
-    const statusEl = this.querySelector('#status');
-    
-    if (event && eventEl) {
-      eventEl.innerText = event.state;
-      if (statusEl) {
-        statusEl.innerText = event.attributes.friendly_name || 'Aktiv';
-      }
-    } else if (eventEl) {
-      eventEl.innerText = "Kein Event verfügbar";
-      if (statusEl) {
-        statusEl.innerText = "Offline";
-      }
-    }
+    //this.loadIrCodes();
   }
 
   async loadIrCodes() {
@@ -253,24 +233,37 @@ class HassBeamCard extends HTMLElement {
         serviceData.device = deviceFilter.trim();
       }
       
+      // Variable für Unsubscribe-Funktion
+      let unsubscribe = null;
+      let hasReceived = false;
+      
       // Event-Listener für die Service-Response
-      const unsubscribe = this._hass.connection.subscribeEvents((event) => {
-        if (event.data && event.data.codes) {
-          this.irCodes = event.data.codes;
-          this.updateTable();
-          
-          // Event-Listener entfernen nach erfolgreichem Empfang
-          unsubscribe();
-        }
-      }, 'hassbeam_connect_codes_retrieved');
+      try {
+        unsubscribe = this._hass.connection.subscribeEvents((event) => {
+          if (event.data && event.data.codes && !hasReceived) {
+            hasReceived = true;
+            this.irCodes = event.data.codes;
+            this.updateTable();
+            
+            // Event-Listener entfernen nach erfolgreichem Empfang
+            if (unsubscribe && typeof unsubscribe === 'function') {
+              unsubscribe();
+            }
+          }
+        }, 'hassbeam_connect_codes_retrieved');
+      } catch (subscribeError) {
+        console.error('Fehler beim Event-Subscribe:', subscribeError);
+      }
       
       // Service aufrufen
       await this._hass.callService('hassbeam_connect', 'get_recent_codes', serviceData);
       
       // Timeout als Fallback
       setTimeout(() => {
-        if (this.irCodes.length === 0) {
-          unsubscribe();
+        if (!hasReceived) {
+          if (unsubscribe && typeof unsubscribe === 'function') {
+            unsubscribe();
+          }
           this.showError('Keine Daten empfangen (Timeout)');
         }
       }, 5000);
