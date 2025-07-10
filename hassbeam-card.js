@@ -94,13 +94,6 @@ class HassBeamCard extends HTMLElement {
       
       <div class="table-container" style="max-height: ${tableHeight};">
         <table id="ir-codes-table">
-          <colgroup>
-            <col style="width: 150px; min-width: 150px;">
-            <col style="width: 120px; min-width: 120px;">
-            <col style="width: 100px; min-width: 100px;">
-            <col style="width: 120px; min-width: 120px;">
-            <col style="width: auto; min-width: 300px;">
-          </colgroup>
           <thead>
             <tr>
               <th>Zeitstempel</th>
@@ -200,43 +193,12 @@ class HassBeamCard extends HTMLElement {
         }
         
         /* Explizite Spaltenbreiten mit wichtigster Priorität */
-        #ir-codes-table col:nth-child(1) { width: 5% !important; }
+        #ir-codes-table col:nth-child(1) { width: 10% !important; }
         #ir-codes-table col:nth-child(2) { width: 5% !important; }
         #ir-codes-table col:nth-child(3) { width: 5% !important; }
         #ir-codes-table col:nth-child(4) { width: 5% !important; }
-        #ir-codes-table col:nth-child(5) { width: 80% !important; }
+        #ir-codes-table col:nth-child(5) { width: 75% !important; }
         
-        /* Doppelte Absicherung über th/td */
-        #ir-codes-table th:nth-child(1),
-        #ir-codes-table td:nth-child(1) { 
-          width: 5% !important; 
-          max-width: 5% !important;
-          min-width: 70px !important;
-        }
-        #ir-codes-table th:nth-child(2),
-        #ir-codes-table td:nth-child(2) { 
-          width: 5% !important; 
-          max-width: 5% !important;
-          min-width: 70px !important;
-        }
-        #ir-codes-table th:nth-child(3),
-        #ir-codes-table td:nth-child(3) { 
-          width: 5% !important; 
-          max-width: 5% !important;
-          min-width: 60px !important;
-        }
-        #ir-codes-table th:nth-child(4),
-        #ir-codes-table td:nth-child(4) { 
-          width: 5% !important; 
-          max-width: 5% !important;
-          min-width: 60px !important;
-        }
-        #ir-codes-table th:nth-child(5),
-        #ir-codes-table td:nth-child(5) { 
-          width: 80% !important; 
-          max-width: 80% !important;
-          min-width: 300px !important;
-        }
         
         #ir-codes-table th,
         #ir-codes-table td {
