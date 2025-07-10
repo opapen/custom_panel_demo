@@ -21,10 +21,11 @@ class HassBeamCard extends HTMLElement {
     const showTable = this.config.show_table !== false;
     const maxRows = this.currentLimit;
     const cardHeight = this.config.height || 'auto';
+    const cardWidth = this.config.width || 'auto';
     const tableHeight = this.config.table_height || '400px';
 
     this.innerHTML = `
-      <ha-card header="${this.config.title || 'HassBeam Card'}" style="height: ${cardHeight};">
+      <ha-card header="${this.config.title || 'HassBeam Card'}" style="height: ${cardHeight}; width: ${cardWidth};">
         <div class="card-content">
                  
           ${showTable ? `
@@ -62,6 +63,12 @@ class HassBeamCard extends HTMLElement {
       </ha-card>
       
       <style>
+        ha-card {
+          width: ${cardWidth};
+          height: ${cardHeight};
+          display: block;
+        }
+        
         .card-content {
           padding: 16px;
         }
