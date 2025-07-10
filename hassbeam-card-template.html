@@ -1,0 +1,41 @@
+<ha-card header="{{title}}">
+  <div class="card-content">
+    <div class="status-section">
+      <p>Letztes IR-Event: <span id="ir-event">Wird geladen...</span></p>
+      <p>Status: <span id="status">Unbekannt</span></p>
+      <p>Anzahl Codes: <span id="code-count">0</span></p>
+    </div>
+    
+    {{#if showTable}}
+    <div class="table-controls">
+      <div class="filter-section">
+        <label>Gerät filtern:</label>
+        <input type="text" id="device-filter" placeholder="Gerätename eingeben..." value="{{currentDevice}}" />
+        <label>Limit:</label>
+        <input type="number" id="limit-input" min="1" max="100" value="{{currentLimit}}" />
+        <button id="refresh-btn">Aktualisieren</button>
+      </div>
+    </div>
+    
+    <div class="table-container">
+      <table id="ir-codes-table">
+        <thead>
+          <tr>
+            <th>Zeitstempel</th>
+            <th>Gerät</th>
+            <th>Aktion</th>
+            <th>Event Data</th>
+          </tr>
+        </thead>
+        <tbody id="table-body">
+          <tr>
+            <td colspan="4" style="text-align: center; padding: 20px;">
+              Daten werden geladen...
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    {{/if}}
+  </div>
+</ha-card>

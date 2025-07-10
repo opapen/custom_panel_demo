@@ -1,0 +1,117 @@
+.card-content {
+  padding: 16px;
+}
+
+.status-section {
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--divider-color);
+}
+
+.table-controls {
+  margin-bottom: 16px;
+}
+
+.filter-section {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.filter-section label {
+  font-weight: 500;
+}
+
+.filter-section input[type="text"] {
+  padding: 6px 8px;
+  border: 1px solid var(--divider-color);
+  border-radius: 4px;
+  background: var(--card-background-color);
+  color: var(--primary-text-color);
+  min-width: 150px;
+}
+
+.filter-section input[type="number"] {
+  padding: 6px 8px;
+  border: 1px solid var(--divider-color);
+  border-radius: 4px;
+  background: var(--card-background-color);
+  color: var(--primary-text-color);
+  width: 60px;
+}
+
+.filter-section button {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  background: var(--primary-color);
+  color: var(--text-primary-color);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.filter-section button:hover {
+  background: var(--primary-color-dark);
+}
+
+.table-container {
+  overflow-x: auto;
+  border: 1px solid var(--divider-color);
+  border-radius: 4px;
+}
+
+#ir-codes-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+#ir-codes-table th,
+#ir-codes-table td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--divider-color);
+}
+
+#ir-codes-table th {
+  background: var(--table-header-background-color, var(--secondary-background-color));
+  font-weight: 500;
+  position: sticky;
+  top: 0;
+}
+
+#ir-codes-table tr:hover {
+  background: var(--table-row-hover-color, var(--secondary-background-color));
+}
+
+.timestamp {
+  white-space: nowrap;
+  font-family: monospace;
+  font-size: 12px;
+}
+
+.device {
+  font-weight: 500;
+}
+
+.action {
+  color: var(--primary-color);
+}
+
+.event-data {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: monospace;
+  font-size: 12px;
+}
+
+.event-data:hover {
+  overflow: visible;
+  white-space: normal;
+  background: var(--card-background-color);
+  position: relative;
+  z-index: 1;
+}

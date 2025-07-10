@@ -1,6 +1,22 @@
 console.info("HassBeam Card v2.0.0 geladen");
 
+/**
+ * HassBeam Card - Modular Home Assistant Custom Card
+ * 
+ * Features:
+ * - Loads HTML template from external file (hassbeam-card-template.html)
+ * - Loads CSS styles from external file (hassbeam-card-styles.css)
+ * - Fallback to inline templates if external files fail to load
+ * - Interactive filtering and limiting of IR codes
+ * - Event-driven data loading from hassbeam_connect service
+ */
 class HassBeamCard extends HTMLElement {
+  constructor() {
+    super();
+    this.templateHTML = null;
+    this.templateCSS = null;
+  }
+
   setConfig(config) {
     if (!config) {
       throw new Error('Invalid configuration');
@@ -13,177 +29,91 @@ class HassBeamCard extends HTMLElement {
     this.currentDevice = config.device || '';
     this.currentLimit = config.limit || 10;
     
-    this.createCard();
-    this.attachEventListeners();
+    this.loadTemplates().then(() => {
+      this.createCard();
+      this.attachEventListeners();
+    });
+  }
+
+  async loadTemplates() {
+    try {
+      // HTML-Template laden
+      if (!this.templateHTML) {
+        console.log('Loading HTML template from external file...');
+        const htmlResponse = await fetch('/hacsfiles/hassbeam-card/hassbeam-card-template.html');
+        if (!htmlResponse.ok) {
+          throw new Error(`HTTP ${htmlResponse.status}: ${htmlResponse.statusText}`);
+        }
+        this.templateHTML = await htmlResponse.text();
+        console.log('HTML template loaded successfully');
+      }
+      
+      // CSS-Template laden
+      if (!this.templateCSS) {
+        console.log('Loading CSS template from external file...');
+        const cssResponse = await fetch('/hacsfiles/hassbeam-card/hassbeam-card-styles.css');
+        if (!cssResponse.ok) {
+          throw new Error(`HTTP ${cssResponse.status}: ${cssResponse.statusText}`);
+        }
+        this.templateCSS = await cssResponse.text();
+        console.log('CSS template loaded successfully');
+      }
+    } catch (error) {
+      console.warn('Fehler beim Laden der externen Templates:', error);
+      console.log('Verwende Fallback-Templates...');
+      // Fallback zu inline-Template
+      this.templateHTML = this.getFallbackHTML();
+      this.templateCSS = this.getFallbackCSS();
+    }
   }
 
   createCard() {
+    // Überprüfe, ob externe Templates geladen wurden
+    if (!this.templateHTML || !this.templateCSS) {
+      console.warn('Templates nicht geladen, verwende Fallback');
+      this.createFallbackCard();
+      return;
+    }
+
     const showTable = this.config.show_table !== false;
-    const maxRows = this.currentLimit;
     
-    this.innerHTML = `
-      <ha-card header="${this.config.title || 'HassBeam Card'}">
-        <div class="card-content">
-          <div class="status-section">
-            <p>Letztes IR-Event: <span id="ir-event">Wird geladen...</span></p>
-            <p>Status: <span id="status">Unbekannt</span></p>
-            <p>Anzahl Codes: <span id="code-count">0</span></p>
-          </div>
-          
-          ${showTable ? `
-          <div class="table-controls">
-            <div class="filter-section">
-              <label>Gerät filtern:</label>
-              <input type="text" id="device-filter" placeholder="Gerätename eingeben..." value="${this.currentDevice}" />
-              <label>Limit:</label>
-              <input type="number" id="limit-input" min="1" max="100" value="${maxRows}" />
-              <button id="refresh-btn">Aktualisieren</button>
-            </div>
-          </div>
-          
-          <div class="table-container">
-            <table id="ir-codes-table">
-              <thead>
-                <tr>
-                  <th>Zeitstempel</th>
-                  <th>Gerät</th>
-                  <th>Aktion</th>
-                  <th>Event Data</th>
-                </tr>
-              </thead>
-              <tbody id="table-body">
-                <tr>
-                  <td colspan="4" style="text-align: center; padding: 20px;">
-                    Daten werden geladen...
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          ` : ''}
-        </div>
-      </ha-card>
-      
-      <style>
-        .card-content {
-          padding: 16px;
-        }
-        
-        .status-section {
-          margin-bottom: 16px;
-          padding-bottom: 16px;
-          border-bottom: 1px solid var(--divider-color);
-        }
-        
-        .table-controls {
-          margin-bottom: 16px;
-        }
-        
-        .filter-section {
-          display: flex;
-          gap: 8px;
-          align-items: center;
-          flex-wrap: wrap;
-        }
-        
-        .filter-section label {
-          font-weight: 500;
-        }
-        
-        .filter-section input[type="text"] {
-          padding: 6px 8px;
-          border: 1px solid var(--divider-color);
-          border-radius: 4px;
-          background: var(--card-background-color);
-          color: var(--primary-text-color);
-          min-width: 150px;
-        }
-        
-        .filter-section input[type="number"] {
-          padding: 6px 8px;
-          border: 1px solid var(--divider-color);
-          border-radius: 4px;
-          background: var(--card-background-color);
-          color: var(--primary-text-color);
-          width: 60px;
-        }
-        
-        .filter-section button {
-          padding: 6px 12px;
-          border: none;
-          border-radius: 4px;
-          background: var(--primary-color);
-          color: var(--text-primary-color);
-          cursor: pointer;
-          font-size: 14px;
-        }
-        
-        .filter-section button:hover {
-          background: var(--primary-color-dark);
-        }
-        
-        .table-container {
-          overflow-x: auto;
-          border: 1px solid var(--divider-color);
-          border-radius: 4px;
-        }
-        
-        #ir-codes-table {
-          width: 100%;
-          border-collapse: collapse;
-          font-size: 14px;
-        }
-        
-        #ir-codes-table th,
-        #ir-codes-table td {
-          padding: 8px 12px;
-          text-align: left;
-          border-bottom: 1px solid var(--divider-color);
-        }
-        
-        #ir-codes-table th {
-          background: var(--table-header-background-color, var(--secondary-background-color));
-          font-weight: 500;
-          position: sticky;
-          top: 0;
-        }
-        
-        #ir-codes-table tr:hover {
-          background: var(--table-row-hover-color, var(--secondary-background-color));
-        }
-        
-        .timestamp {
-          white-space: nowrap;
-          font-family: monospace;
-          font-size: 12px;
-        }
-        
-        .device {
-          font-weight: 500;
-        }
-        
-        .action {
-          color: var(--primary-color);
-        }
-        
-        .event-data {
-          max-width: 200px;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-          font-family: monospace;
-          font-size: 12px;
-        }
-        
-        .event-data:hover {
-          overflow: visible;
-          white-space: normal;
-          background: var(--card-background-color);
-          position: relative;
-          z-index: 1;
-        }
-      </style>
-    `;
+    // Template-Variablen in externer HTML-Datei ersetzen
+    let html = this.templateHTML
+      .replace(/\{\{title\}\}/g, this.config.title || 'HassBeam Card')
+      .replace(/\{\{currentDevice\}\}/g, this.currentDevice)
+      .replace(/\{\{currentLimit\}\}/g, this.currentLimit);
+    
+    // Conditional rendering für Tabelle
+    if (showTable) {
+      html = html.replace(/\{\{#if showTable\}\}/g, '').replace(/\{\{\/if\}\}/g, '');
+    } else {
+      // Entferne Tabellen-Bereich
+      html = html.replace(/\{\{#if showTable\}\}.*?\{\{\/if\}\}/gs, '');
+    }
+    
+    // Externe CSS-Datei einbinden
+    this.innerHTML = html + `<style>${this.templateCSS}</style>`;
+  }
+
+  createFallbackCard() {
+    // Verwende die Fallback-Templates (interne Methoden)
+    const showTable = this.config.show_table !== false;
+    
+    // Template-Variablen ersetzen
+    let html = this.getFallbackHTML()
+      .replace(/\{\{title\}\}/g, this.config.title || 'HassBeam Card')
+      .replace(/\{\{currentDevice\}\}/g, this.currentDevice)
+      .replace(/\{\{currentLimit\}\}/g, this.currentLimit);
+    
+    // Conditional rendering für Tabelle
+    if (showTable) {
+      html = html.replace(/\{\{#if showTable\}\}/g, '').replace(/\{\{\/if\}\}/g, '');
+    } else {
+      // Entferne Tabellen-Bereich
+      html = html.replace(/\{\{#if showTable\}\}.*?\{\{\/if\}\}/gs, '');
+    }
+    
+    this.innerHTML = html + `<style>${this.getFallbackCSS()}</style>`;
   }
 
   attachEventListeners() {
@@ -354,6 +284,78 @@ class HassBeamCard extends HTMLElement {
       hass: {},
       config: {}
     };
+  }
+
+  // Fallback HTML-Template (wird verwendet, wenn externe Datei nicht geladen werden kann)
+  getFallbackHTML() {
+    return `
+      <ha-card header="{{title}}">
+        <div class="card-content">
+          <div class="status-section">
+            <p>Letztes IR-Event: <span id="ir-event">Wird geladen...</span></p>
+            <p>Status: <span id="status">Unbekannt</span></p>
+            <p>Anzahl Codes: <span id="code-count">0</span></p>
+          </div>
+          
+          {{#if showTable}}
+          <div class="table-controls">
+            <div class="filter-section">
+              <label>Gerät filtern:</label>
+              <input type="text" id="device-filter" placeholder="Gerätename eingeben..." value="{{currentDevice}}" />
+              <label>Limit:</label>
+              <input type="number" id="limit-input" min="1" max="100" value="{{currentLimit}}" />
+              <button id="refresh-btn">Aktualisieren</button>
+            </div>
+          </div>
+          
+          <div class="table-container">
+            <table id="ir-codes-table">
+              <thead>
+                <tr>
+                  <th>Zeitstempel</th>
+                  <th>Gerät</th>
+                  <th>Aktion</th>
+                  <th>Event Data</th>
+                </tr>
+              </thead>
+              <tbody id="table-body">
+                <tr>
+                  <td colspan="4" style="text-align: center; padding: 20px;">
+                    Daten werden geladen...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          {{/if}}
+        </div>
+      </ha-card>
+    `;
+  }
+
+  // Fallback CSS-Template (wird verwendet, wenn externe Datei nicht geladen werden kann)
+  getFallbackCSS() {
+    return `
+      .card-content { padding: 16px; }
+      .status-section { margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--divider-color); }
+      .table-controls { margin-bottom: 16px; }
+      .filter-section { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+      .filter-section label { font-weight: 500; }
+      .filter-section input[type="text"] { padding: 6px 8px; border: 1px solid var(--divider-color); border-radius: 4px; background: var(--card-background-color); color: var(--primary-text-color); min-width: 150px; }
+      .filter-section input[type="number"] { padding: 6px 8px; border: 1px solid var(--divider-color); border-radius: 4px; background: var(--card-background-color); color: var(--primary-text-color); width: 60px; }
+      .filter-section button { padding: 6px 12px; border: none; border-radius: 4px; background: var(--primary-color); color: var(--text-primary-color); cursor: pointer; font-size: 14px; }
+      .filter-section button:hover { background: var(--primary-color-dark); }
+      .table-container { overflow-x: auto; border: 1px solid var(--divider-color); border-radius: 4px; }
+      #ir-codes-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+      #ir-codes-table th, #ir-codes-table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--divider-color); }
+      #ir-codes-table th { background: var(--table-header-background-color, var(--secondary-background-color)); font-weight: 500; position: sticky; top: 0; }
+      #ir-codes-table tr:hover { background: var(--table-row-hover-color, var(--secondary-background-color)); }
+      .timestamp { white-space: nowrap; font-family: monospace; font-size: 12px; }
+      .device { font-weight: 500; }
+      .action { color: var(--primary-color); }
+      .event-data { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: monospace; font-size: 12px; }
+      .event-data:hover { overflow: visible; white-space: normal; background: var(--card-background-color); position: relative; z-index: 1; }
+    `;
   }
 }
 
