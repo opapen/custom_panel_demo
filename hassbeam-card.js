@@ -46,12 +46,13 @@ class HassBeamCard extends HTMLElement {
                   <th>Zeitstempel</th>
                   <th>Gerät</th>
                   <th>Aktion</th>
+                  <th>Protocol</th>
                   <th>Event Data</th>
                 </tr>
               </thead>
               <tbody id="table-body">
                 <tr>
-                  <td colspan="4" style="text-align: center; padding: 20px;">
+                  <td colspan="5" style="text-align: center; padding: 20px;">
                     Daten werden geladen...
                   </td>
                 </tr>
@@ -169,6 +170,12 @@ class HassBeamCard extends HTMLElement {
         
         .action {
           color: var(--primary-color);
+        }
+        
+        .protocol {
+          font-weight: 500;
+          color: var(--secondary-text-color);
+          font-size: 12px;
         }
         
         .event-data {
@@ -296,7 +303,7 @@ class HassBeamCard extends HTMLElement {
     if (this.irCodes.length === 0) {
       tableBody.innerHTML = `
         <tr>
-          <td colspan="4" style="text-align: center; padding: 20px;">
+          <td colspan="5" style="text-align: center; padding: 20px;">
             Keine IR-Codes gefunden
           </td>
         </tr>
@@ -314,12 +321,20 @@ class HassBeamCard extends HTMLElement {
 
       const timestamp = new Date(createdAt).toLocaleString('de-DE');
 
-      // Event Data formatieren
+      // Protocol aus Event Data extrahieren
+      let protocol = 'N/A';
       let formattedEventData = eventData;
+      
       try {
         const parsed = JSON.parse(eventData);
-        formattedEventData = Object.keys(parsed).map(key =>
-          `${key}: ${parsed[key]}`
+        protocol = parsed.protocol || 'N/A';
+        
+        // Event Data formatieren (ohne protocol, da es in eigener Spalte steht)
+        const filteredData = { ...parsed };
+        delete filteredData.protocol;
+        
+        formattedEventData = Object.keys(filteredData).map(key =>
+          `${key}: ${filteredData[key]}`
         ).join(', ');
       } catch (e) {
         // Fallback zu originalem String
@@ -330,6 +345,7 @@ class HassBeamCard extends HTMLElement {
           <td class="timestamp">${timestamp}</td>
           <td class="device">${device}</td>
           <td class="action">${action}</td>
+          <td class="protocol">${protocol}</td>
           <td class="event-data" title="${formattedEventData}">${formattedEventData}</td>
         </tr>
       `;
@@ -350,7 +366,7 @@ class HassBeamCard extends HTMLElement {
     if (tableBody) {
       tableBody.innerHTML = `
         <tr>
-          <td colspan="4" style="text-align: center; padding: 20px; color: var(--error-color);">
+          <td colspan="5" style="text-align: center; padding: 20px; color: var(--error-color);">
             ${message}
           </td>
         </tr>
