@@ -12,6 +12,8 @@ class HassBeamCard extends HTMLElement {
     this.currentDevice = '';
     this.currentLimit = 10;
     this._hass = null;
+    this._activeSubscription = null; // Verwalte aktive Subscription
+    this._subscriptionTimeout = null; // Verwalte Timeout
   }
 
   /**
@@ -357,33 +359,19 @@ class HassBeamCard extends HTMLElement {
       return;
     }
 
+    // Vorherige Subscription beenden falls noch aktiv
+    this.cleanupSubscription();
+
     try {
       const serviceData = this.prepareServiceData();
       console.log('HassBeam Card: Service-Daten vorbereitet', serviceData);
       
-      // Event-Listener für die Service-Response
-      let unsubscribe = null;
       let hasReceived = false;
       
-      const cleanup = () => {
-        console.log('HassBeam Card: Cleanup-Funktion aufgerufen', { hasReceived });
-        hasReceived = true;
-        if (unsubscribe && typeof unsubscribe === 'function') {
-          console.log('HassBeam Card: Event-Subscription wird beendet');
-          try {
-            unsubscribe();
-          } catch (error) {
-            console.error('HassBeam Card: Fehler beim Beenden der Event-Subscription:', error);
-          }
-        } else {
-          console.warn('HassBeam Card: unsubscribe ist keine Funktion oder nicht verfügbar:', typeof unsubscribe);
-        }
-      };
-
       // Event-Subscription
       console.log('HassBeam Card: Event-Subscription wird eingerichtet für "hassbeam_connect_codes_retrieved"');
       try {
-        unsubscribe = this._hass.connection.subscribeEvents((event) => {
+        this._activeSubscription = await this._hass.connection.subscribeEvents((event) => {
           console.log('HassBeam Card: Event "hassbeam_connect_codes_retrieved" empfangen', event);
           
           if (event.data?.codes && !hasReceived) {
@@ -392,9 +380,10 @@ class HassBeamCard extends HTMLElement {
               codes: event.data.codes
             });
             
+            hasReceived = true;
             this.irCodes = event.data.codes;
             this.updateTable();
-            cleanup();
+            this.cleanupSubscription();
           } else {
             console.log('HassBeam Card: Event ohne gültige Codes oder bereits empfangen', {
               hasCodes: !!event.data?.codes,
@@ -403,14 +392,14 @@ class HassBeamCard extends HTMLElement {
           }
         }, 'hassbeam_connect_codes_retrieved');
 
-        if (unsubscribe && typeof unsubscribe === 'function') {
+        if (this._activeSubscription && typeof this._activeSubscription === 'function') {
           console.log('HassBeam Card: Event-Subscription erfolgreich eingerichtet');
         } else {
-          console.warn('HassBeam Card: Event-Subscription möglicherweise fehlgeschlagen - unsubscribe ist keine Funktion:', typeof unsubscribe);
+          console.warn('HassBeam Card: Event-Subscription möglicherweise fehlgeschlagen:', typeof this._activeSubscription);
         }
       } catch (subscribeError) {
         console.error('HassBeam Card: Fehler beim Einrichten der Event-Subscription:', subscribeError);
-        unsubscribe = null;
+        this._activeSubscription = null;
       }
 
       // Service aufrufen
@@ -420,11 +409,11 @@ class HassBeamCard extends HTMLElement {
 
       // Timeout als Fallback
       console.log('HassBeam Card: Timeout (5s) wird eingerichtet');
-      setTimeout(() => {
+      this._subscriptionTimeout = setTimeout(() => {
         if (!hasReceived) {
           console.error('HassBeam Card: Timeout erreicht - keine Daten empfangen');
           this.showError('Keine Daten empfangen (Timeout)');
-          cleanup();
+          this.cleanupSubscription();
         } else {
           console.log('HassBeam Card: Timeout erreicht aber Daten bereits empfangen');
         }
@@ -433,6 +422,7 @@ class HassBeamCard extends HTMLElement {
     } catch (error) {
       console.error('HassBeam Card: Fehler beim Laden der IR-Codes:', error);
       this.showError('Fehler beim Laden der Daten: ' + error.message);
+      this.cleanupSubscription();
     }
   }
 
@@ -455,6 +445,38 @@ class HassBeamCard extends HTMLElement {
 
     console.log('HassBeam Card: Service-Daten vorbereitet', serviceData);
     return serviceData;
+  }
+
+  /**
+   * Aktive Event-Subscription und Timeout bereinigen
+   */
+  cleanupSubscription() {
+    console.log('HassBeam Card: cleanupSubscription aufgerufen', {
+      hasActiveSubscription: !!this._activeSubscription,
+      hasTimeout: !!this._subscriptionTimeout
+    });
+
+    // Timeout bereinigen
+    if (this._subscriptionTimeout) {
+      console.log('HassBeam Card: Timeout wird bereinigt');
+      clearTimeout(this._subscriptionTimeout);
+      this._subscriptionTimeout = null;
+    }
+
+    // Subscription bereinigen
+    if (this._activeSubscription && typeof this._activeSubscription === 'function') {
+      console.log('HassBeam Card: Event-Subscription wird beendet');
+      try {
+        this._activeSubscription();
+        console.log('HassBeam Card: Event-Subscription erfolgreich beendet');
+      } catch (error) {
+        console.error('HassBeam Card: Fehler beim Beenden der Event-Subscription:', error);
+      }
+      this._activeSubscription = null;
+    } else if (this._activeSubscription) {
+      console.warn('HassBeam Card: ActiveSubscription ist keine Funktion:', typeof this._activeSubscription);
+      this._activeSubscription = null;
+    }
   }
 
   /**
@@ -606,6 +628,14 @@ class HassBeamCard extends HTMLElement {
       hass: {},
       config: {}
     };
+  }
+
+  /**
+   * Wird aufgerufen wenn die Karte aus dem DOM entfernt wird
+   */
+  disconnectedCallback() {
+    console.log('HassBeam Card: disconnectedCallback - Karte wird entfernt');
+    this.cleanupSubscription();
   }
 }
 
