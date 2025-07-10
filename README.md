@@ -1,6 +1,17 @@
 # HassBeam Card
 
-Eine einfache Custom Lovelace Card zur Anzeige oder Steuerung von IR-Events mit HassBeam.
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
+
+Eine einfache Custom Lovelace Card zur Anzeige von IR-Events mit HassBeam.
+
+## Features
+
+- **Status-Anzeige**: Zeigt das letzte IR-Event und den Status an
+- **IR-Code-Tabelle**: Vollständige Übersicht aller gespeicherten IR-Codes aus der HassBeam-Datenbank
+- **Geräte-Filter**: Filterung nach spezifischen Geräten
+- **Live-Aktualisierung**: Automatische Aktualisierung der Daten
+- **Responsive Design**: Optimiert für verschiedene Bildschirmgrößen
+- **Hover-Details**: Vollständige Event-Daten beim Überfahren mit der Maus
 
 ## Installation
 
@@ -56,28 +67,15 @@ filter_device: "TV"              # Optional: Nur bestimmtes Gerät anzeigen
 | `max_rows` | number | 50 | Maximale Anzahl Tabellenzeilen |
 | `filter_device` | string | - | Nur bestimmtes Gerät anzeigen |
 
-## Features
-
-- **Status-Anzeige**: Zeigt das letzte IR-Event und den Status an
-- **IR-Code-Tabelle**: Vollständige Übersicht aller gespeicherten IR-Codes
-- **Geräte-Filter**: Filterung nach spezifischen Geräten
-- **Live-Aktualisierung**: Automatische Aktualisierung der Daten
-- **Responsive Design**: Optimiert für verschiedene Bildschirmgrößen
-
-## Tabellen-Spalten
-
-Die Tabelle zeigt folgende Informationen:
-
-- **Zeitstempel**: Wann der IR-Code empfangen wurde
-- **Gerät**: Name des Geräts
-- **Aktion**: Ausgeführte Aktion
-- **Event Data**: JSON-Daten des Events (hover für Details)
-
 ## Voraussetzungen
 
 - Home Assistant mit Lovelace UI
 - HassBeam Integration installiert
 - Entity `sensor.hassbeam_last_ir` verfügbar
+
+## Screenshot
+
+![HassBeam Card](https://via.placeholder.com/400x200/1f1f1f/ffffff?text=HassBeam+Card)
 
 ## Unterstützung
 
