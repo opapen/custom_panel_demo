@@ -92,6 +92,13 @@ class HassBeamCard extends HTMLElement {
       
       <div class="table-container" style="max-height: ${tableHeight};">
         <table id="ir-codes-table">
+          <colgroup>
+            <col style="width: 12.5%;">
+            <col style="width: 12.5%;">
+            <col style="width: 12.5%;">
+            <col style="width: 12.5%;">
+            <col style="width: 50%;">
+          </colgroup>
           <thead>
             <tr>
               <th>Zeitstempel</th>
@@ -189,17 +196,39 @@ class HassBeamCard extends HTMLElement {
           table-layout: fixed;
         }
         
-        /* Spaltenbreiten */
+        /* Spaltenbreiten explizit definieren */
+        #ir-codes-table colgroup col:nth-child(1) { width: 12.5%; }
+        #ir-codes-table colgroup col:nth-child(2) { width: 12.5%; }
+        #ir-codes-table colgroup col:nth-child(3) { width: 12.5%; }
+        #ir-codes-table colgroup col:nth-child(4) { width: 12.5%; }
+        #ir-codes-table colgroup col:nth-child(5) { width: 50%; }
+        
+        /* Fallback für th/td Selektoren */
         #ir-codes-table th:nth-child(1),
-        #ir-codes-table td:nth-child(1) { width: 12.5%; }
+        #ir-codes-table td:nth-child(1) { 
+          width: 12.5% !important; 
+          min-width: 100px;
+        }
         #ir-codes-table th:nth-child(2),
-        #ir-codes-table td:nth-child(2) { width: 12.5%; }
+        #ir-codes-table td:nth-child(2) { 
+          width: 12.5% !important; 
+          min-width: 100px;
+        }
         #ir-codes-table th:nth-child(3),
-        #ir-codes-table td:nth-child(3) { width: 12.5%; }
+        #ir-codes-table td:nth-child(3) { 
+          width: 12.5% !important; 
+          min-width: 80px;
+        }
         #ir-codes-table th:nth-child(4),
-        #ir-codes-table td:nth-child(4) { width: 12.5%; }
+        #ir-codes-table td:nth-child(4) { 
+          width: 12.5% !important; 
+          min-width: 80px;
+        }
         #ir-codes-table th:nth-child(5),
-        #ir-codes-table td:nth-child(5) { width: 50%; }
+        #ir-codes-table td:nth-child(5) { 
+          width: 50% !important; 
+          min-width: 200px;
+        }
         
         #ir-codes-table th,
         #ir-codes-table td {
@@ -323,6 +352,12 @@ class HassBeamCard extends HTMLElement {
       return;
     }
 
+    if (!this._hass.connection) {
+      console.error('HassBeam Card: Keine Home Assistant Connection verfügbar');
+      this.showError('Keine Verbindung zu Home Assistant');
+      return;
+    }
+
     try {
       const serviceData = this.prepareServiceData();
       console.log('HassBeam Card: Service-Daten vorbereitet', serviceData);
@@ -334,35 +369,50 @@ class HassBeamCard extends HTMLElement {
       const cleanup = () => {
         console.log('HassBeam Card: Cleanup-Funktion aufgerufen', { hasReceived });
         hasReceived = true;
-        if (unsubscribe) {
+        if (unsubscribe && typeof unsubscribe === 'function') {
           console.log('HassBeam Card: Event-Subscription wird beendet');
-          unsubscribe();
+          try {
+            unsubscribe();
+          } catch (error) {
+            console.error('HassBeam Card: Fehler beim Beenden der Event-Subscription:', error);
+          }
+        } else {
+          console.warn('HassBeam Card: unsubscribe ist keine Funktion oder nicht verfügbar:', typeof unsubscribe);
         }
       };
 
       // Event-Subscription
       console.log('HassBeam Card: Event-Subscription wird eingerichtet für "hassbeam_connect_codes_retrieved"');
-      unsubscribe = this._hass.connection.subscribeEvents((event) => {
-        console.log('HassBeam Card: Event "hassbeam_connect_codes_retrieved" empfangen', event);
-        
-        if (event.data?.codes && !hasReceived) {
-          console.log('HassBeam Card: Gültige IR-Codes empfangen', {
-            anzahl: event.data.codes.length,
-            codes: event.data.codes
-          });
+      try {
+        unsubscribe = this._hass.connection.subscribeEvents((event) => {
+          console.log('HassBeam Card: Event "hassbeam_connect_codes_retrieved" empfangen', event);
           
-          this.irCodes = event.data.codes;
-          this.updateTable();
-          cleanup();
-        } else {
-          console.log('HassBeam Card: Event ohne gültige Codes oder bereits empfangen', {
-            hasCodes: !!event.data?.codes,
-            hasReceived: hasReceived
-          });
-        }
-      }, 'hassbeam_connect_codes_retrieved');
+          if (event.data?.codes && !hasReceived) {
+            console.log('HassBeam Card: Gültige IR-Codes empfangen', {
+              anzahl: event.data.codes.length,
+              codes: event.data.codes
+            });
+            
+            this.irCodes = event.data.codes;
+            this.updateTable();
+            cleanup();
+          } else {
+            console.log('HassBeam Card: Event ohne gültige Codes oder bereits empfangen', {
+              hasCodes: !!event.data?.codes,
+              hasReceived: hasReceived
+            });
+          }
+        }, 'hassbeam_connect_codes_retrieved');
 
-      console.log('HassBeam Card: Event-Subscription erfolgreich eingerichtet');
+        if (unsubscribe && typeof unsubscribe === 'function') {
+          console.log('HassBeam Card: Event-Subscription erfolgreich eingerichtet');
+        } else {
+          console.warn('HassBeam Card: Event-Subscription möglicherweise fehlgeschlagen - unsubscribe ist keine Funktion:', typeof unsubscribe);
+        }
+      } catch (subscribeError) {
+        console.error('HassBeam Card: Fehler beim Einrichten der Event-Subscription:', subscribeError);
+        unsubscribe = null;
+      }
 
       // Service aufrufen
       console.log('HassBeam Card: Service "hassbeam_connect.get_recent_codes" wird aufgerufen', serviceData);
@@ -412,16 +462,26 @@ class HassBeamCard extends HTMLElement {
    * Tabelle mit neuen Daten aktualisieren
    */
   updateTable() {
+    console.log('HassBeam Card: updateTable aufgerufen', {
+      anzahlCodes: this.irCodes.length,
+      codes: this.irCodes
+    });
+    
     const tableBody = this.querySelector('#table-body');
-    if (!tableBody) return;
+    if (!tableBody) {
+      console.error('HassBeam Card: table-body Element nicht gefunden');
+      return;
+    }
 
     // Code-Anzahl aktualisieren (falls Element vorhanden)
     const codeCountEl = this.querySelector('#code-count');
     if (codeCountEl) {
       codeCountEl.innerText = this.irCodes.length;
+      console.log('HassBeam Card: Code-Anzahl aktualisiert', this.irCodes.length);
     }
 
     if (this.irCodes.length === 0) {
+      console.log('HassBeam Card: Keine IR-Codes vorhanden, zeige leere Tabelle');
       tableBody.innerHTML = `
         <tr>
           <td colspan="5" style="text-align: center; padding: 20px;">
@@ -432,7 +492,9 @@ class HassBeamCard extends HTMLElement {
       return;
     }
 
+    console.log('HassBeam Card: Tabelle wird mit Daten gefüllt');
     tableBody.innerHTML = this.irCodes.map(code => this.createTableRow(code)).join('');
+    console.log('HassBeam Card: Tabelle erfolgreich aktualisiert');
   }
 
   /**
@@ -441,10 +503,12 @@ class HassBeamCard extends HTMLElement {
    * @returns {string} HTML-String für die Tabellenzeile
    */
   createTableRow(code) {
+    console.log('HassBeam Card: createTableRow aufgerufen', code);
+    
     const timestamp = new Date(code.created_at).toLocaleString('de-DE');
     const { protocol, formattedEventData } = this.parseEventData(code.event_data);
 
-    return `
+    const row = `
       <tr>
         <td class="timestamp">${timestamp}</td>
         <td class="device">${code.device}</td>
@@ -453,6 +517,14 @@ class HassBeamCard extends HTMLElement {
         <td class="event-data" title="${formattedEventData}">${formattedEventData}</td>
       </tr>
     `;
+    
+    console.log('HassBeam Card: Tabellenzeile erstellt', {
+      device: code.device,
+      action: code.action,
+      protocol: protocol
+    });
+    
+    return row;
   }
 
   /**
@@ -461,9 +533,16 @@ class HassBeamCard extends HTMLElement {
    * @returns {Object} Geparste Daten mit Protocol und formatierten Event-Daten
    */
   parseEventData(eventData) {
+    console.log('HassBeam Card: parseEventData aufgerufen', eventData);
+    
     try {
       const parsed = JSON.parse(eventData);
       const protocol = parsed.protocol || 'N/A';
+      
+      console.log('HassBeam Card: Event-Daten erfolgreich geparst', {
+        protocol: protocol,
+        originalData: parsed
+      });
       
       // Protocol aus den Event-Daten entfernen
       const { protocol: _, ...filteredData } = parsed;
@@ -472,8 +551,14 @@ class HassBeamCard extends HTMLElement {
         .map(([key, value]) => `${key}: ${value}`)
         .join(', ');
       
+      console.log('HassBeam Card: Event-Daten formatiert', {
+        protocol: protocol,
+        formattedEventData: formattedEventData
+      });
+      
       return { protocol, formattedEventData };
     } catch (e) {
+      console.error('HassBeam Card: Fehler beim Parsen der Event-Daten:', e, eventData);
       return { protocol: 'N/A', formattedEventData: eventData };
     }
   }
@@ -496,6 +581,8 @@ class HassBeamCard extends HTMLElement {
    * @param {string} message - Fehlermeldung
    */
   showError(message) {
+    console.error('HassBeam Card: showError aufgerufen', message);
+    
     const tableBody = this.querySelector('#table-body');
     if (tableBody) {
       tableBody.innerHTML = `
@@ -505,6 +592,9 @@ class HassBeamCard extends HTMLElement {
           </td>
         </tr>
       `;
+      console.log('HassBeam Card: Fehlermeldung in Tabelle angezeigt');
+    } else {
+      console.error('HassBeam Card: table-body Element nicht gefunden für Fehlermeldung');
     }
   }
 
