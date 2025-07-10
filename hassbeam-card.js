@@ -8,13 +8,18 @@ class HassBeamCard extends HTMLElement {
     
     this.config = config;
     this.irCodes = [];
+    
+    // Aktuelle Werte für Filter und Limit
+    this.currentDevice = config.device || '';
+    this.currentLimit = config.limit || 10;
+    
     this.createCard();
     this.attachEventListeners();
   }
 
   createCard() {
     const showTable = this.config.show_table !== false;
-    const maxRows = this.config.limit || 10;
+    const maxRows = this.currentLimit;
     
     this.innerHTML = `
       <ha-card header="${this.config.title || 'HassBeam Card'}">
@@ -29,7 +34,7 @@ class HassBeamCard extends HTMLElement {
           <div class="table-controls">
             <div class="filter-section">
               <label>Gerät filtern:</label>
-              <input type="text" id="device-filter" placeholder="Gerätename eingeben..." value="${this.config.device || ''}" />
+              <input type="text" id="device-filter" placeholder="Gerätename eingeben..." value="${this.currentDevice}" />
               <label>Limit:</label>
               <input type="number" id="limit-input" min="1" max="100" value="${maxRows}" />
               <button id="refresh-btn">Aktualisieren</button>
@@ -192,7 +197,7 @@ class HassBeamCard extends HTMLElement {
     const deviceFilter = this.querySelector('#device-filter');
     if (deviceFilter) {
       deviceFilter.addEventListener('input', (e) => {
-        this.config.device = e.target.value;
+        this.currentDevice = e.target.value;
         this.loadIrCodes();
       });
     }
@@ -201,7 +206,7 @@ class HassBeamCard extends HTMLElement {
     const limitInput = this.querySelector('#limit-input');
     if (limitInput) {
       limitInput.addEventListener('change', (e) => {
-        this.config.limit = parseInt(e.target.value) || 10;
+        this.currentLimit = parseInt(e.target.value) || 10;
         this.loadIrCodes();
       });
     }
@@ -236,8 +241,8 @@ class HassBeamCard extends HTMLElement {
     if (!this._hass) return;
     
     try {
-      const deviceFilter = this.config.device || '';
-      const limit = this.config.limit || 10;
+      const deviceFilter = this.currentDevice || '';
+      const limit = this.currentLimit || 10;
       
       const serviceData = {
         limit: limit
