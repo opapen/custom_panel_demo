@@ -5,14 +5,14 @@ class HassBeamCard extends HTMLElement {
     if (!config) {
       throw new Error('Invalid configuration');
     }
-    
+
     this.config = config;
     this.irCodes = [];
-    
+
     // Aktuelle Werte für Filter und Limit
     this.currentDevice = config.device || '';
     this.currentLimit = config.limit || 10;
-    
+
     this.createCard();
     this.attachEventListeners();
   }
@@ -20,16 +20,13 @@ class HassBeamCard extends HTMLElement {
   createCard() {
     const showTable = this.config.show_table !== false;
     const maxRows = this.currentLimit;
-    
+    const cardHeight = this.config.height || 'auto';
+    const tableHeight = this.config.table_height || '400px';
+
     this.innerHTML = `
-      <ha-card header="${this.config.title || 'HassBeam Card'}">
+      <ha-card header="${this.config.title || 'HassBeam Card'}" style="height: ${cardHeight};">
         <div class="card-content">
-          <div class="status-section">
-            <p>Letztes IR-Event: <span id="ir-event">Wird geladen...</span></p>
-            <p>Status: <span id="status">Unbekannt</span></p>
-            <p>Anzahl Codes: <span id="code-count">0</span></p>
-          </div>
-          
+                 
           ${showTable ? `
           <div class="table-controls">
             <div class="filter-section">
@@ -41,7 +38,7 @@ class HassBeamCard extends HTMLElement {
             </div>
           </div>
           
-          <div class="table-container">
+          <div class="table-container" style="max-height: ${tableHeight};">
             <table id="ir-codes-table">
               <thead>
                 <tr>
@@ -124,6 +121,7 @@ class HassBeamCard extends HTMLElement {
         
         .table-container {
           overflow-x: auto;
+          overflow-y: auto;
           border: 1px solid var(--divider-color);
           border-radius: 4px;
         }
@@ -194,14 +192,14 @@ class HassBeamCard extends HTMLElement {
         // Werte direkt aus den Input-Feldern auslesen
         const deviceFilter = this.querySelector('#device-filter');
         const limitInput = this.querySelector('#limit-input');
-        
+
         this.currentDevice = deviceFilter ? deviceFilter.value : '';
         this.currentLimit = limitInput ? limitInput.value : '10';
-        
+
         this.loadIrCodes();
       });
     }
-    
+
     // Input-Event-Listener werden nicht mehr benötigt
   }
 
@@ -212,25 +210,25 @@ class HassBeamCard extends HTMLElement {
 
   async loadIrCodes() {
     if (!this._hass) return;
-    
+
     try {
       const deviceFilter = this.currentDevice || '';
       const limit = parseInt(this.currentLimit) || 10;
-      
+
       const serviceData = {
         limit: limit
       };
-      
+
       // Nur device hinzufügen, wenn es nicht leer ist
       if (deviceFilter.trim()) {
         serviceData.device = deviceFilter.trim();
       }
-      
+
       // Variable für Unsubscribe-Funktion und State
       let unsubscribe = null;
       let hasReceived = false;
       let timeoutId = null;
-      
+
       // Cleanup-Funktion
       const cleanup = () => {
         hasReceived = true;
@@ -247,7 +245,7 @@ class HassBeamCard extends HTMLElement {
           unsubscribe = null;
         }
       };
-      
+
       // Event-Listener für die Service-Response
       try {
         unsubscribe = this._hass.connection.subscribeEvents((event) => {
@@ -260,10 +258,10 @@ class HassBeamCard extends HTMLElement {
       } catch (subscribeError) {
         console.error('Fehler beim Event-Subscribe:', subscribeError);
       }
-      
+
       // Service aufrufen
       await this._hass.callService('hassbeam_connect', 'get_recent_codes', serviceData);
-      
+
       // Timeout als Fallback
       timeoutId = setTimeout(() => {
         if (!hasReceived) {
@@ -271,7 +269,7 @@ class HassBeamCard extends HTMLElement {
           cleanup();
         }
       }, 5000);
-      
+
     } catch (error) {
       console.error('Fehler beim Laden der IR-Codes:', error);
       this.showError('Fehler beim Laden der Daten: ' + error.message);
@@ -281,13 +279,13 @@ class HassBeamCard extends HTMLElement {
   updateTable() {
     const tableBody = this.querySelector('#table-body');
     const codeCountEl = this.querySelector('#code-count');
-    
+
     if (!tableBody) return;
-    
+
     if (codeCountEl) {
       codeCountEl.innerText = this.irCodes.length;
     }
-    
+
     if (this.irCodes.length === 0) {
       tableBody.innerHTML = `
         <tr>
@@ -298,7 +296,7 @@ class HassBeamCard extends HTMLElement {
       `;
       return;
     }
-    
+
     tableBody.innerHTML = this.irCodes.map(code => {
       // Das neue Format: Objekt mit Eigenschaften
       const id = code.id;
@@ -306,20 +304,20 @@ class HassBeamCard extends HTMLElement {
       const action = code.action;
       const eventData = code.event_data;
       const createdAt = code.created_at;
-      
+
       const timestamp = new Date(createdAt).toLocaleString('de-DE');
-      
+
       // Event Data formatieren
       let formattedEventData = eventData;
       try {
         const parsed = JSON.parse(eventData);
-        formattedEventData = Object.keys(parsed).map(key => 
+        formattedEventData = Object.keys(parsed).map(key =>
           `${key}: ${parsed[key]}`
         ).join(', ');
       } catch (e) {
         // Fallback zu originalem String
       }
-      
+
       return `
         <tr>
           <td class="timestamp">${timestamp}</td>
@@ -332,6 +330,11 @@ class HassBeamCard extends HTMLElement {
   }
 
   getCardSize() {
+    // Konfigurierbare Kartengröße
+    // Standardwerte: 6 für Karten mit Tabelle, 1 für Karten ohne Tabelle
+    if (this.config.card_size !== undefined) {
+      return this.config.card_size;
+    }
     return this.config.show_table !== false ? 6 : 1;
   }
 
