@@ -1,9 +1,12 @@
-# Custom Panel Demo
+# HassBeam Card
 
-This is a starter template for a Home Assistant integration with a custom sidebar panel.
-It includes:
-- A Python backend integration
-- A frontend panel served via `/www`
-- HACS compatibility
+Eine einfache Custom Lovelace Card zur Anzeige oder Steuerung von IR-Events mit HassBeam.
 
-No manual configuration required after HACS install.
+## Nutzung
+
+1. Installiere diese Karte über HACS → Frontend → Benutzerdefiniertes Repository.
+2. Füge folgende Ressource hinzu:
+
+```yaml
+url: /hacsfiles/hassbeam-card/hassbeam-card.js
+type: module

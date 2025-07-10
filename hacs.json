@@ -1,6 +1,6 @@
 {
-  "name": "Custom Panel Demo",
-  "domains": ["custom_panel_demo"],
-  "homeassistant": "2023.0.0",
+  "name": "HassBeam Card",
+  "filename": "hassbeam-card.js",
+  "type": "module",
   "render_readme": true
 }
