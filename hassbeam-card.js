@@ -1,8 +1,17 @@
-console.info("HassBeam Card v2.0.0 geladen");
+console.info("HassBeam Card v2.0.0 loaded");
 
 /**
- * HassBeam Card - Custom Lovelace Card für Home Assistant
- * Zeigt IR-Code Events mit konfigurierbarer Tabelle an
+ * HassBeam Card - Custom Lovelace Card for Home Assistant
+ * 
+ * This card displays IR code events from HassBeam devices in a configurable table format.
+ * It provides real-time updates and allows users to filter and manage their captured IR codes.
+ * 
+ * Features:
+ * - Display captured IR codes in a sortable table
+ * - Filter by device and action names
+ * - Real-time updates via Home Assistant events
+ * - Configurable table size and appearance
+ * - Delete functionality for unwanted codes
  */
 class HassBeamCard extends HTMLElement {
   constructor() {
@@ -13,16 +22,16 @@ class HassBeamCard extends HTMLElement {
     this.currentAction = '';
     this.currentLimit = 10;
     this._hass = null;
-    this._activeSubscription = null; // Verwalte aktive Subscription
-    this._subscriptionTimeout = null; // Verwalte Timeout
+    this._activeSubscription = null; // Track active event subscription
+    this._subscriptionTimeout = null; // Track subscription timeout
   }
 
   /**
-   * Konfiguration der Karte setzen
-   * @param {Object} config - Konfigurationsobjekt aus YAML
+   * Set the configuration for this card instance
+   * @param {Object} config - Configuration object from YAML
    */
   setConfig(config) {
-    console.log('HassBeam Card: setConfig aufgerufen', config);
+    console.log('HassBeam Card: setConfig called', config);
     
     if (!config) {
       throw new Error('Invalid configuration');
@@ -31,12 +40,12 @@ class HassBeamCard extends HTMLElement {
     this.config = config;
     this.irCodes = [];
 
-    // Aktuelle Werte für Filter und Limit initialisieren
+    // Initialize current values for filters and limit
     this.currentDevice = config.device || '';
     this.currentAction = config.action || '';
     this.currentLimit = config.limit || 10;
 
-    console.log('HassBeam Card: Konfiguration gesetzt', {
+    console.log('HassBeam Card: Configuration set', {
       device: this.currentDevice,
       action: this.currentAction,
       limit: this.currentLimit,
@@ -48,7 +57,7 @@ class HassBeamCard extends HTMLElement {
   }
 
   /**
-   * Erstellt das HTML der Karte
+   * Create the HTML structure for the card
    */
   createCard() {
     const showTable = this.config.show_table !== false;
@@ -60,12 +69,12 @@ class HassBeamCard extends HTMLElement {
   }
 
   /**
-   * Generiert das HTML für die Karte
-   * @param {boolean} showTable - Soll die Tabelle angezeigt werden
-   * @param {string} cardHeight - Höhe der Karte
-   * @param {string} cardWidth - Breite der Karte
-   * @param {string} tableHeight - Höhe der Tabelle
-   * @returns {string} HTML-String
+   * Generate the HTML structure for the card
+   * @param {boolean} showTable - Whether to display the table
+   * @param {string} cardHeight - Height of the card
+   * @param {string} cardWidth - Width of the card
+   * @param {string} tableHeight - Height of the table
+   * @returns {string} HTML string
    */
   generateCardHTML(showTable, cardHeight, cardWidth, tableHeight) {
     return `
@@ -79,21 +88,21 @@ class HassBeamCard extends HTMLElement {
   }
 
   /**
-   * Generiert das HTML für die Tabelle und Steuerelemente
-   * @param {string} tableHeight - Höhe der Tabelle
-   * @returns {string} HTML-String
+   * Generate the HTML for the table and its controls
+   * @param {string} tableHeight - Height of the table
+   * @returns {string} HTML string
    */
   generateTableHTML(tableHeight) {
     return `
       <div class="table-controls">
         <div class="filter-section">
-          <label>Gerät filtern:</label>
-          <input type="text" id="device-filter" placeholder="Gerätename eingeben..." value="${this.currentDevice}" />
-          <label>Aktion filtern:</label>
-          <input type="text" id="action-filter" placeholder="Aktion eingeben..." value="${this.currentAction}" />
+          <label>Filter by Device:</label>
+          <input type="text" id="device-filter" placeholder="Enter device name..." value="${this.currentDevice}" />
+          <label>Filter by Action:</label>
+          <input type="text" id="action-filter" placeholder="Enter action name..." value="${this.currentAction}" />
           <label>Limit:</label>
           <input type="number" id="limit-input" min="1" max="100" value="${this.currentLimit}" />
-          <button id="refresh-btn">Aktualisieren</button>
+          <button id="refresh-btn">Refresh</button>
         </div>
       </div>
       
@@ -110,19 +119,19 @@ class HassBeamCard extends HTMLElement {
           </colgroup>
           <thead>
             <tr>
-              <th>Zeitstempel</th>
+              <th>Timestamp</th>
               <th>HassBeam Device</th>
-              <th>Gerät</th>
-              <th>Aktion</th>
+              <th>Device</th>
+              <th>Action</th>
               <th>Protocol</th>
               <th>Event Data</th>
-              <th>Aktionen</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody id="table-body">
             <tr>
               <td colspan="7" style="text-align: center; padding: 20px; color: var(--secondary-text-color);">
-                Klicke auf "Aktualisieren" um IR-Codes zu laden
+                Click "Refresh" to load IR codes
               </td>
             </tr>
           </tbody>
@@ -131,10 +140,10 @@ class HassBeamCard extends HTMLElement {
     `;
   }
   /**
-   * Generiert das CSS für die Karte
-   * @param {string} cardWidth - Breite der Karte
-   * @param {string} cardHeight - Höhe der Karte
-   * @returns {string} CSS-String
+   * Generate CSS styles for the card
+   * @param {string} cardWidth - Width of the card
+   * @param {string} cardHeight - Height of the card
+   * @returns {string} CSS string
    */
   generateCSS(cardWidth, cardHeight) {
     return `
@@ -320,21 +329,21 @@ class HassBeamCard extends HTMLElement {
   }
 
   /**
-   * Event-Listener für UI-Elemente hinzufügen
+   * Attach event listeners to UI elements
    */
   attachEventListeners() {
-    console.log('HassBeam Card: attachEventListeners aufgerufen');
+    console.log('HassBeam Card: attachEventListeners called');
     
     const refreshBtn = this.querySelector('#refresh-btn');
     if (refreshBtn) {
-      console.log('HassBeam Card: Refresh-Button Event-Listener hinzugefügt');
+      console.log('HassBeam Card: Refresh button event listener added');
       refreshBtn.addEventListener('click', () => {
-        console.log('HassBeam Card: Refresh-Button geklickt');
+        console.log('HassBeam Card: Refresh button clicked');
         this.updateFiltersFromUI();
         this.loadIrCodes();
       });
     } else {
-      console.warn('HassBeam Card: Refresh-Button nicht gefunden');
+      console.warn('HassBeam Card: Refresh button not found');
     }
     
     // Event delegation for delete buttons
@@ -356,10 +365,10 @@ class HassBeamCard extends HTMLElement {
   }
 
   /**
-   * Filter- und Limit-Werte aus den UI-Elementen lesen
+   * Read filter and limit values from UI elements
    */
   updateFiltersFromUI() {
-    console.log('HassBeam Card: updateFiltersFromUI aufgerufen');
+    console.log('HassBeam Card: updateFiltersFromUI called');
     
     const deviceFilter = this.querySelector('#device-filter');
     const limitInput = this.querySelector('#limit-input');
@@ -372,61 +381,61 @@ class HassBeamCard extends HTMLElement {
     this.currentAction = actionFilter?.value || '';
     this.currentLimit = limitInput?.value || '10';
 
-    console.log('HassBeam Card: Filter aktualisiert', {
-      device: { alt: oldDevice, neu: this.currentDevice },
-      action: { alt: oldAction, neu: this.currentAction },
-      limit: { alt: oldLimit, neu: this.currentLimit }
+    console.log('HassBeam Card: Filters updated', {
+      device: { old: oldDevice, new: this.currentDevice },
+      action: { old: oldAction, new: this.currentAction },
+      limit: { old: oldLimit, new: this.currentLimit }
     });
   }
 
   /**
-   * Home Assistant Objekt setzen
-   * @param {Object} hass - Home Assistant Objekt
+   * Set the Home Assistant object
+   * @param {Object} hass - Home Assistant object
    */
   set hass(hass) {
-    console.log('HassBeam Card: hass Objekt gesetzt', hass ? 'verfügbar' : 'nicht verfügbar');
+    console.log('HassBeam Card: hass object set', hass ? 'available' : 'not available');
     
     this._hass = hass;
     
-    // Kein automatisches Laden - nur manuell über Refresh-Button
-    console.log('HassBeam Card: Automatisches Laden deaktiviert - verwende Refresh-Button');
+    // No automatic loading - only manual via refresh button
+    console.log('HassBeam Card: Automatic loading disabled - use refresh button');
   }
 
   /**
-   * IR-Codes vom HassBeam Service laden
+   * Load IR codes from the HassBeam service
    */
   async loadIrCodes() {
-    console.log('HassBeam Card: loadIrCodes aufgerufen');
+    console.log('HassBeam Card: loadIrCodes called');
     
     if (!this._hass) {
-      console.warn('HassBeam Card: Kein hass Objekt verfügbar, loadIrCodes wird beendet');
+      console.warn('HassBeam Card: No hass object available, loadIrCodes will exit');
       return;
     }
 
     if (!this._hass.connection) {
-      console.error('HassBeam Card: Keine Home Assistant Connection verfügbar');
-      this.showError('Keine Verbindung zu Home Assistant');
+      console.error('HassBeam Card: No Home Assistant connection available');
+      this.showError('No connection to Home Assistant');
       return;
     }
 
-    // Vorherige Subscription beenden falls noch aktiv
+    // End previous subscription if still active
     this.cleanupSubscription();
 
     try {
       const serviceData = this.prepareServiceData();
-      console.log('HassBeam Card: Service-Daten vorbereitet', serviceData);
+      console.log('HassBeam Card: Service data prepared', serviceData);
       
       let hasReceived = false;
       
-      // Event-Subscription
-      console.log('HassBeam Card: Event-Subscription wird eingerichtet für "hassbeam_connect_codes_retrieved"');
+      // Event subscription
+      console.log('HassBeam Card: Setting up event subscription for "hassbeam_connect_codes_retrieved"');
       try {
         this._activeSubscription = await this._hass.connection.subscribeEvents((event) => {
-          console.log('HassBeam Card: Event "hassbeam_connect_codes_retrieved" empfangen', event);
+          console.log('HassBeam Card: Event "hassbeam_connect_codes_retrieved" received', event);
           
           if (event.data?.codes && !hasReceived) {
-            console.log('HassBeam Card: Gültige IR-Codes empfangen', {
-              anzahl: event.data.codes.length,
+            console.log('HassBeam Card: Valid IR codes received', {
+              count: event.data.codes.length,
               codes: event.data.codes
             });
             
@@ -435,7 +444,7 @@ class HassBeamCard extends HTMLElement {
             this.updateTable();
             this.cleanupSubscription();
           } else {
-            console.log('HassBeam Card: Event ohne gültige Codes oder bereits empfangen', {
+            console.log('HassBeam Card: Event without valid codes or already received', {
               hasCodes: !!event.data?.codes,
               hasReceived: hasReceived
             });
@@ -443,45 +452,45 @@ class HassBeamCard extends HTMLElement {
         }, 'hassbeam_connect_codes_retrieved');
 
         if (this._activeSubscription && typeof this._activeSubscription === 'function') {
-          console.log('HassBeam Card: Event-Subscription erfolgreich eingerichtet');
+          console.log('HassBeam Card: Event subscription set up successfully');
         } else {
-          console.warn('HassBeam Card: Event-Subscription möglicherweise fehlgeschlagen:', typeof this._activeSubscription);
+          console.warn('HassBeam Card: Event subscription might have failed:', typeof this._activeSubscription);
         }
       } catch (subscribeError) {
-        console.error('HassBeam Card: Fehler beim Einrichten der Event-Subscription:', subscribeError);
+        console.error('HassBeam Card: Error setting up event subscription:', subscribeError);
         this._activeSubscription = null;
       }
 
-      // Service aufrufen
-      console.log('HassBeam Card: Service "hassbeam_connect.get_recent_codes" wird aufgerufen', serviceData);
+      // Call service
+      console.log('HassBeam Card: Calling service "hassbeam_connect.get_recent_codes"', serviceData);
       await this._hass.callService('hassbeam_connect', 'get_recent_codes', serviceData);
-      console.log('HassBeam Card: Service-Aufruf erfolgreich abgeschlossen');
+      console.log('HassBeam Card: Service call completed successfully');
 
-      // Timeout als Fallback
-      console.log('HassBeam Card: Timeout (5s) wird eingerichtet');
+      // Timeout as fallback
+      console.log('HassBeam Card: Setting up timeout (5s)');
       this._subscriptionTimeout = setTimeout(() => {
         if (!hasReceived) {
-          console.error('HassBeam Card: Timeout erreicht - keine Daten empfangen');
-          this.showError('Keine Daten empfangen (Timeout)');
+          console.error('HassBeam Card: Timeout reached - no data received');
+          this.showError('No data received (timeout)');
           this.cleanupSubscription();
         } else {
-          console.log('HassBeam Card: Timeout erreicht aber Daten bereits empfangen');
+          console.log('HassBeam Card: Timeout reached but data already received');
         }
       }, 5000);
 
     } catch (error) {
-      console.error('HassBeam Card: Fehler beim Laden der IR-Codes:', error);
-      this.showError('Fehler beim Laden der Daten: ' + error.message);
+      console.error('HassBeam Card: Error loading IR codes:', error);
+      this.showError('Error loading data: ' + error.message);
       this.cleanupSubscription();
     }
   }
 
   /**
-   * Service-Daten für den API-Aufruf vorbereiten
-   * @returns {Object} Service-Daten
+   * Prepare service data for the API call
+   * @returns {Object} Service data
    */
   prepareServiceData() {
-    console.log('HassBeam Card: prepareServiceData aufgerufen', {
+    console.log('HassBeam Card: prepareServiceData called', {
       currentDevice: this.currentDevice,
       currentLimit: this.currentLimit
     });
@@ -489,97 +498,97 @@ class HassBeamCard extends HTMLElement {
     const serviceData = { limit: parseInt(this.currentLimit) || 10 };
     if (this.currentDevice?.trim()) {
       serviceData.device = this.currentDevice.trim();
-      console.log('HassBeam Card: Gerätename zu Service-Daten hinzugefügt', serviceData.device);
+      console.log('HassBeam Card: Device name added to service data', serviceData.device);
     }
     if (this.currentAction?.trim()) {
       serviceData.action = this.currentAction.trim();
-      console.log('HassBeam Card: Aktionsname zu Service-Daten hinzugefügt', serviceData.action);
+      console.log('HassBeam Card: Action name added to service data', serviceData.action);
     }
 
-    console.log('HassBeam Card: Service-Daten vorbereitet', serviceData);
+    console.log('HassBeam Card: Service data prepared', serviceData);
     return serviceData;
   }
 
   /**
-   * Aktive Event-Subscription und Timeout bereinigen
+   * Clean up active event subscription and timeout
    */
   cleanupSubscription() {
-    console.log('HassBeam Card: cleanupSubscription aufgerufen', {
+    console.log('HassBeam Card: cleanupSubscription called', {
       hasActiveSubscription: !!this._activeSubscription,
       hasTimeout: !!this._subscriptionTimeout
     });
 
-    // Timeout bereinigen
+    // Clean up timeout
     if (this._subscriptionTimeout) {
-      console.log('HassBeam Card: Timeout wird bereinigt');
+      console.log('HassBeam Card: Clearing timeout');
       clearTimeout(this._subscriptionTimeout);
       this._subscriptionTimeout = null;
     }
 
-    // Subscription bereinigen
+    // Clean up subscription
     if (this._activeSubscription && typeof this._activeSubscription === 'function') {
-      console.log('HassBeam Card: Event-Subscription wird beendet');
+      console.log('HassBeam Card: Ending event subscription');
       try {
         this._activeSubscription();
-        console.log('HassBeam Card: Event-Subscription erfolgreich beendet');
+        console.log('HassBeam Card: Event subscription ended successfully');
       } catch (error) {
-        console.error('HassBeam Card: Fehler beim Beenden der Event-Subscription:', error);
+        console.error('HassBeam Card: Error ending event subscription:', error);
       }
       this._activeSubscription = null;
     } else if (this._activeSubscription) {
-      console.warn('HassBeam Card: ActiveSubscription ist keine Funktion:', typeof this._activeSubscription);
+      console.warn('HassBeam Card: ActiveSubscription is not a function:', typeof this._activeSubscription);
       this._activeSubscription = null;
     }
   }
 
   /**
-   * Tabelle mit neuen Daten aktualisieren
+   * Update table with new data
    */
   updateTable() {
-    console.log('HassBeam Card: updateTable aufgerufen', {
-      anzahlCodes: this.irCodes.length,
+    console.log('HassBeam Card: updateTable called', {
+      codeCount: this.irCodes.length,
       codes: this.irCodes
     });
     
     const tableBody = this.querySelector('#table-body');
     if (!tableBody) {
-      console.error('HassBeam Card: table-body Element nicht gefunden');
+      console.error('HassBeam Card: table-body element not found');
       return;
     }
 
-    // Code-Anzahl aktualisieren (falls Element vorhanden)
+    // Update code count (if element exists)
     const codeCountEl = this.querySelector('#code-count');
     if (codeCountEl) {
       codeCountEl.innerText = this.irCodes.length;
-      console.log('HassBeam Card: Code-Anzahl aktualisiert', this.irCodes.length);
+      console.log('HassBeam Card: Code count updated', this.irCodes.length);
     }
 
     if (this.irCodes.length === 0) {
-      console.log('HassBeam Card: Keine IR-Codes vorhanden, zeige leere Tabelle');
+      console.log('HassBeam Card: No IR codes available, showing empty table');
       tableBody.innerHTML = `
         <tr>
           <td colspan="6" style="text-align: center; padding: 20px;">
-            Keine IR-Codes gefunden
+            No IR codes found
           </td>
         </tr>
       `;
       return;
     }
 
-    console.log('HassBeam Card: Tabelle wird mit Daten gefüllt');
+    console.log('HassBeam Card: Filling table with data');
     tableBody.innerHTML = this.irCodes.map(code => this.createTableRow(code)).join('');
-    console.log('HassBeam Card: Tabelle erfolgreich aktualisiert');
+    console.log('HassBeam Card: Table updated successfully');
   }
 
   /**
-   * Einzelne Tabellenzeile erstellen
-   * @param {Object} code - IR-Code-Objekt
-   * @returns {string} HTML-String für die Tabellenzeile
+   * Create a single table row
+   * @param {Object} code - IR code object
+   * @returns {string} HTML string for the table row
    */
   createTableRow(code) {
-    console.log('HassBeam Card: createTableRow aufgerufen', code);
+    console.log('HassBeam Card: createTableRow called', code);
     
-    const timestamp = new Date(code.created_at).toLocaleString('de-DE');
+    const timestamp = new Date(code.created_at).toLocaleString('en-US');
     const { protocol, formattedEventData, hassbeamDevice } = this.parseEventData(code.event_data);
 
     const row = `
@@ -591,14 +600,14 @@ class HassBeamCard extends HTMLElement {
         <td class="protocol">${protocol}</td>
         <td class="event-data" title="${formattedEventData}">${formattedEventData}</td>
         <td class="actions">
-          <button class="delete-btn" data-code-id="${code.id}" title="Löschen">
+          <button class="delete-btn" data-code-id="${code.id}" title="Delete">
             ×
           </button>
         </td>
       </tr>
     `;
     
-    console.log('HassBeam Card: Tabellenzeile erstellt', {
+    console.log('HassBeam Card: Table row created', {
       id: code.id,
       device: code.device,
       action: code.action,
@@ -610,31 +619,31 @@ class HassBeamCard extends HTMLElement {
   }
 
   /**
-   * Event-Daten parsen und formatieren
-   * @param {string} eventData - JSON-String mit Event-Daten
-   * @returns {Object} Geparste Daten mit Protocol und formatierten Event-Daten
+   * Parse and format event data
+   * @param {string} eventData - JSON string with event data
+   * @returns {Object} Parsed data with protocol and formatted event data
    */
   parseEventData(eventData) {
-    console.log('HassBeam Card: parseEventData aufgerufen', eventData);
+    console.log('HassBeam Card: parseEventData called', eventData);
     
     try {
       const parsed = JSON.parse(eventData);
       const protocol = parsed.protocol || 'N/A';
       const hassbeamDevice = parsed.hassbeam_device || 'N/A';
       
-      console.log('HassBeam Card: Event-Daten erfolgreich geparst', {
+      console.log('HassBeam Card: Event data parsed successfully', {
         protocol: protocol,
         hassbeamDevice: hassbeamDevice,
         originalData: parsed
       });
       
-      // Device-Name, device_id, hassbeam_device und protocol aus der Anzeige ausblenden
+      // Hide device_name, device_id, hassbeam_device and protocol from display
       const filteredData = Object.entries(parsed)
         .filter(([key]) => !['device_name', 'device_id', 'hassbeam_device', 'protocol'].includes(key))
         .map(([key, value]) => `${key}: ${value}`)
         .join(', ');
       
-      console.log('HassBeam Card: Event-Daten formatiert (ohne device_name, device_id, hassbeam_device, protocol)', {
+      console.log('HassBeam Card: Event data formatted (without device_name, device_id, hassbeam_device, protocol)', {
         protocol: protocol,
         hassbeamDevice: hassbeamDevice,
         formattedEventData: filteredData
@@ -642,18 +651,18 @@ class HassBeamCard extends HTMLElement {
       
       return { protocol, formattedEventData: filteredData, hassbeamDevice };
     } catch (e) {
-      console.error('HassBeam Card: Fehler beim Parsen der Event-Daten:', e, eventData);
+      console.error('HassBeam Card: Error parsing event data:', e, eventData);
       return { protocol: 'N/A', formattedEventData: eventData, hassbeamDevice: 'N/A' };
     }
   }
 
   /**
-   * Kartengröße für das Dashboard zurückgeben
-   * @returns {number} Kartengröße
+   * Get card size for the dashboard
+   * @returns {number} Card size
    */
   getCardSize() {
-    // Konfigurierbare Kartengröße
-    // Standardwerte: 6 für Karten mit Tabelle, 1 für Karten ohne Tabelle
+    // Configurable card size
+    // Default values: 6 for cards with table, 1 for cards without table
     if (this.config.card_size !== undefined) {
       return this.config.card_size;
     }
@@ -661,11 +670,11 @@ class HassBeamCard extends HTMLElement {
   }
 
   /**
-   * Fehlermeldung in der Tabelle anzeigen
-   * @param {string} message - Fehlermeldung
+   * Show error message in the table
+   * @param {string} message - Error message
    */
   showError(message) {
-    console.error('HassBeam Card: showError aufgerufen', message);
+    console.error('HassBeam Card: showError called', message);
     
     const tableBody = this.querySelector('#table-body');
     if (tableBody) {
@@ -676,15 +685,15 @@ class HassBeamCard extends HTMLElement {
           </td>
         </tr>
       `;
-      console.log('HassBeam Card: Fehlermeldung in Tabelle angezeigt');
+      console.log('HassBeam Card: Error message displayed in table');
     } else {
-      console.error('HassBeam Card: table-body Element nicht gefunden für Fehlermeldung');
+      console.error('HassBeam Card: table-body element not found for error message');
     }
   }
 
   /**
-   * Eigenschaften für bessere HACS-Kompatibilität
-   * @returns {Object} Eigenschaften-Objekt
+   * Properties for better HACS compatibility
+   * @returns {Object} Properties object
    */
   static get properties() {
     return {
@@ -694,61 +703,61 @@ class HassBeamCard extends HTMLElement {
   }
 
   /**
-   * IR-Code löschen
-   * @param {number} codeId - ID des zu löschenden Codes
+   * Delete IR code
+   * @param {number} codeId - ID of the code to delete
    */
   async deleteCode(codeId) {
-    console.log('HassBeam Card: deleteCode aufgerufen', codeId);
+    console.log('HassBeam Card: deleteCode called', codeId);
     
     if (!this._hass) {
-      console.error('HassBeam Card: Keine Home Assistant Instanz verfügbar');
+      console.error('HassBeam Card: No Home Assistant instance available');
       return;
     }
     
-    // Bestätigung anzeigen
-    if (!confirm('Möchten Sie diesen IR-Code wirklich löschen?')) {
+    // Show confirmation dialog
+    if (!confirm('Do you really want to delete this IR code?')) {
       return;
     }
     
     try {
-      // Service aufrufen
+      // Call service
       const result = await this._hass.callService('hassbeam_connect', 'delete_ir_code', {
         id: codeId
       });
       
-      console.log('HassBeam Card: IR-Code gelöscht', result);
+      console.log('HassBeam Card: IR code deleted', result);
       
-      // Tabelle aktualisieren
+      // Refresh table
       await this.loadIrCodes();
       
     } catch (error) {
-      console.error('HassBeam Card: Fehler beim Löschen des IR-Codes:', error);
-      alert('Fehler beim Löschen des IR-Codes: ' + error.message);
+      console.error('HassBeam Card: Error deleting IR code:', error);
+      alert('Error deleting IR code: ' + error.message);
     }
   }
 
   /**
-   * Wird aufgerufen wenn die Karte aus dem DOM entfernt wird
+   * Called when the card is removed from the DOM
    */
   disconnectedCallback() {
-    console.log('HassBeam Card: disconnectedCallback - Karte wird entfernt');
+    console.log('HassBeam Card: disconnectedCallback - card being removed');
     this.cleanupSubscription();
   }
 }
 
 customElements.define('hassbeam-card', HassBeamCard);
 
-// Für Home Assistant Card Picker
+// For Home Assistant Card Picker
 window.customCards = window.customCards || [];
 window.customCards.push({
   type: 'hassbeam-card',
   name: 'HassBeam Card',
-  description: 'Eine Card zur Anzeige von IR-Events mit HassBeam inkl. Tabelle'
+  description: 'A card for displaying IR events with HassBeam including table'
 });
 
 
-// HASSBEAM SETUP CARD (zweite Card im selben File)
-console.info("HassBeam Setup Card v1.0.0 geladen");
+// HASSBEAM SETUP CARD (second card in the same file)
+console.info("HassBeam Setup Card v1.0.0 loaded");
 
 class HassBeamSetupCard extends HTMLElement {
   constructor() {
@@ -767,7 +776,7 @@ class HassBeamSetupCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
-    // Hier könnten später Daten geladen werden
+    // Data could be loaded here later
   }
 
   render() {
@@ -776,24 +785,24 @@ class HassBeamSetupCard extends HTMLElement {
         <div class="card-content">
           <div class="top-controls">
             <button id="start-listening-btn" class="listening-btn">Start Listening</button>
-            <button id="clear-table-btn" class="clear-btn">Tabelle leeren</button>
+            <button id="clear-table-btn" class="clear-btn">Clear Table</button>
           </div>
           
           <div class="setup-table-container">
             <table id="setup-table">
               <thead>
                 <tr>
-                  <th>Zeit</th>
+                  <th>Time</th>
                   <th>HassBeam Device</th>
                   <th>Protocol</th>
                   <th>Event Data</th>
-                  <th>Aktionen</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody id="setup-table-body">
                 <tr>
                   <td colspan="5" style="text-align: center; padding: 20px; color: var(--secondary-text-color);">
-                    Klicken Sie auf "Start Listening" um zu beginnen
+                    Click "Start Listening" to begin
                   </td>
                 </tr>
               </tbody>
@@ -802,17 +811,17 @@ class HassBeamSetupCard extends HTMLElement {
           
           <div class="setup-controls">
             <div class="input-group">
-              <label for="device-input">Gerät:</label>
-              <input type="text" id="device-input" placeholder="Gerätename eingeben..." />
+              <label for="device-input">Device:</label>
+              <input type="text" id="device-input" placeholder="Enter device name..." />
             </div>
             <div class="input-group">
-              <label for="action-input">Aktion:</label>
-              <input type="text" id="action-input" placeholder="Aktionsname eingeben..." />
+              <label for="action-input">Action:</label>
+              <input type="text" id="action-input" placeholder="Enter action name..." />
             </div>
           </div>
           
           <div class="save-section">
-            <button id="save-code-btn" class="save-btn" disabled>IR-Code speichern</button>
+            <button id="save-code-btn" class="save-btn" disabled>Save IR Code</button>
           </div>
         </div>
       </ha-card>
@@ -993,7 +1002,7 @@ class HassBeamSetupCard extends HTMLElement {
       });
     }
     
-    // Input-Felder überwachen für Save-Button Status
+    // Monitor input fields for save button state
     if (deviceInput) {
       deviceInput.addEventListener('input', () => {
         this.updateSaveButtonState();
@@ -1015,7 +1024,7 @@ class HassBeamSetupCard extends HTMLElement {
     
     if (!this.isListening) {
       if (!this._hass || !this._hass.connection) {
-        alert('Keine Verbindung zu Home Assistant verfügbar.');
+        alert('No connection to Home Assistant available.');
         return;
       }
       
@@ -1024,22 +1033,22 @@ class HassBeamSetupCard extends HTMLElement {
       startListeningBtn.textContent = 'Stop Listening';
       startListeningBtn.classList.add('listening');
       
-      // Tabelle leeren und Status anzeigen
-      this.updateTableWithStatus('Lausche auf IR-Codes... Drücken Sie eine Taste auf Ihrer Fernbedienung.');
+      // Clear table and show status
+      this.updateTableWithStatus('Listening for IR codes... Press a button on your remote control.');
       
       console.log('HassBeam Setup: Start Listening');
       
-      // Event-Subscription starten
+      // Start event subscription
       try {
         this._eventSubscription = await this._hass.connection.subscribeEvents((event) => {
-          console.log('HassBeam Setup: IR-Event empfangen', event);
+          console.log('HassBeam Setup: IR event received', event);
           this.handleIrEvent(event);
         }, 'esphome.hassbeam.ir_received');
         
-        console.log('HassBeam Setup: Event-Subscription erfolgreich eingerichtet');
+        console.log('HassBeam Setup: Event subscription set up successfully');
       } catch (error) {
-        console.error('HassBeam Setup: Fehler beim Einrichten der Event-Subscription:', error);
-        alert('Fehler beim Starten des Listening: ' + error.message);
+        console.error('HassBeam Setup: Error setting up event subscription:', error);
+        alert('Error starting listening: ' + error.message);
         this.stopListening();
       }
       
@@ -1057,27 +1066,27 @@ class HassBeamSetupCard extends HTMLElement {
     startListeningBtn.textContent = 'Start Listening';
     startListeningBtn.classList.remove('listening');
     
-    // Event-Subscription beenden
+    // End event subscription
     if (this._eventSubscription && typeof this._eventSubscription === 'function') {
       try {
         this._eventSubscription();
-        console.log('HassBeam Setup: Event-Subscription beendet');
+        console.log('HassBeam Setup: Event subscription ended');
       } catch (error) {
-        console.error('HassBeam Setup: Fehler beim Beenden der Event-Subscription:', error);
+        console.error('HassBeam Setup: Error ending event subscription:', error);
       }
       this._eventSubscription = null;
     }
     
-    // Save-Button aktivieren wenn Events vorhanden
+    // Enable save button if events are available
     this.updateSaveButtonState();
     
     console.log('HassBeam Setup: Stop Listening');
   }
 
   handleIrEvent(event) {
-    console.log('HassBeam Setup: IR-Event verarbeitet', event);
+    console.log('HassBeam Setup: IR event processed', event);
     
-    // Event zu captured events hinzufügen
+    // Add event to captured events
     const eventData = {
       timestamp: new Date(),
       protocol: event.data?.protocol || 'Unknown',
@@ -1089,10 +1098,10 @@ class HassBeamSetupCard extends HTMLElement {
     
     this.capturedEvents.push(eventData);
     
-    // Tabelle aktualisieren
+    // Update table
     this.updateTable();
     
-    // Save-Button Status aktualisieren
+    // Update save button state
     this.updateSaveButtonState();
   }
 
@@ -1102,7 +1111,7 @@ class HassBeamSetupCard extends HTMLElement {
     const deviceInput = this.querySelector('#device-input');
     const actionInput = this.querySelector('#action-input');
     
-    // Button aktivieren wenn Event ausgewählt und Felder ausgefüllt
+    // Enable button when event is selected and fields are filled
     const canSave = selectedEvent && 
                    deviceInput.value.trim() && 
                    actionInput.value.trim();
@@ -1117,19 +1126,19 @@ class HassBeamSetupCard extends HTMLElement {
     if (!tableBody) return;
     
     if (this.capturedEvents.length === 0) {
-      this.updateTableWithStatus('Noch keine IR-Codes empfangen');
+      this.updateTableWithStatus('No IR codes received yet');
       return;
     }
     
-    // Duplikate basierend auf Event Data entfernen
+    // Remove duplicates based on event data
     const uniqueEvents = this.capturedEvents.filter((event, index, array) => {
       const eventDataStr = JSON.stringify(event.rawData);
       return array.findIndex(e => JSON.stringify(e.rawData) === eventDataStr) === index;
     });
     
     tableBody.innerHTML = uniqueEvents.map((event, index) => {
-      const timeString = event.timestamp.toLocaleTimeString('de-DE');
-      // Device-Name, device_id, hassbeam_device und protocol aus Event-Daten entfernen für die Anzeige
+      const timeString = event.timestamp.toLocaleTimeString('en-US');
+      // Remove device_name, device_id, hassbeam_device and protocol from event data for display
       const eventDataCopy = { ...event.rawData };
       delete eventDataCopy.device_name;
       delete eventDataCopy.device_id;
@@ -1145,19 +1154,19 @@ class HassBeamSetupCard extends HTMLElement {
           <td class="event-data" title="${eventDataStr}">${eventDataStr}</td>
           <td>
             <button class="use-btn ${event.selected ? 'selected' : ''}" data-event-index="${index}">
-              ${event.selected ? 'Ausgewählt' : 'Auswählen'}
+              ${event.selected ? 'Selected' : 'Select'}
             </button>
           </td>
         </tr>
       `;
     }).join('');
     
-    // Event-Listener für die Auswahl-Buttons hinzufügen
+    // Add event listeners for selection buttons
     const useButtons = tableBody.querySelectorAll('.use-btn');
     useButtons.forEach(button => {
       button.addEventListener('click', (e) => {
         const index = parseInt(e.target.getAttribute('data-event-index'));
-        // Finde das originale Event basierend auf dem gefilterten Index
+        // Find the original event based on the filtered index
         const selectedUniqueEvent = uniqueEvents[index];
         const originalIndex = this.capturedEvents.findIndex(event => 
           JSON.stringify(event.rawData) === JSON.stringify(selectedUniqueEvent.rawData)
@@ -1181,18 +1190,18 @@ class HassBeamSetupCard extends HTMLElement {
   }
 
   selectEvent(index) {
-    // Alle Events deselektieren
+    // Deselect all events
     this.capturedEvents.forEach(event => event.selected = false);
     
-    // Gewähltes Event selektieren
+    // Select chosen event
     if (this.capturedEvents[index]) {
       this.capturedEvents[index].selected = true;
     }
     
-    // Tabelle aktualisieren
+    // Update table
     this.updateTable();
     
-    // Save-Button aktivieren
+    // Enable save button
     this.updateSaveButtonState();
   }
 
@@ -1202,26 +1211,26 @@ class HassBeamSetupCard extends HTMLElement {
     const actionInput = this.querySelector('#action-input');
 
     if (!selectedEvent) {
-      alert('Bitte wählen Sie einen IR-Code aus der Tabelle aus.');
+      alert('Please select an IR code from the table.');
       return;
     }
 
     const device = deviceInput.value.trim();
     const action = actionInput.value.trim();
 
-    // Validierung der Eingaben
+    // Validate inputs
     if (!device || !action) {
-      alert('Bitte geben Sie sowohl Gerät als auch Aktion ein.');
+      alert('Please enter both device and action.');
       return;
     }
 
     if (!this._hass) {
-      alert('Keine Verbindung zu Home Assistant verfügbar.');
+      alert('No connection to Home Assistant available.');
       return;
     }
 
     try {
-      // Service-Aufruf zum Speichern
+      // Service call to save
       console.log('HassBeam Setup: Calling save_ir_code service...');
       const saveResponse = await this._hass.callService('hassbeam_connect', 'save_ir_code', {
         device: device,
@@ -1231,58 +1240,58 @@ class HassBeamSetupCard extends HTMLElement {
       
       console.log('HassBeam Setup: save_ir_code service completed. Response:', saveResponse);
       
-      // Erfolgreiche Speicherung
-      alert(`IR-Code erfolgreich gespeichert!\nGerät: ${device}\nAktion: ${action}`);
+      // Successful save
+      alert(`IR code saved successfully!\nDevice: ${device}\nAction: ${action}`);
       actionInput.value = '';
       this.capturedEvents = [];
-      this.updateTableWithStatus('IR-Code gespeichert. Geben Sie eine neue Aktion ein für den nächsten Code.');
+      this.updateTableWithStatus('IR code saved. Enter a new action for the next code.');
       this.updateSaveButtonState();
 
     } catch (error) {
-      // Fehler beim Service-Aufruf (z.B. Duplikat oder Netzwerkfehler)
-      console.error('HassBeam Setup: Fehler beim Speichern des IR-Codes:', error);
+      // Error during service call (e.g. duplicate or network error)
+      console.error('HassBeam Setup: Error saving IR code:', error);
       
-      // Prüfe ob es ein "already exists" Fehler ist
+      // Check if it's an "already exists" error
       if (error && error.message && error.message.includes('already exists')) {
-        alert(`Fehler: Ein IR-Code für "${device}.${action}" existiert bereits!\n\nBitte löschen Sie zuerst den vorhandenen Eintrag in der HassBeam Card oder verwenden Sie einen anderen Geräte-/Aktionsnamen.`);
+        alert(`Error: An IR code for "${device}.${action}" already exists!\n\nPlease first delete the existing entry in the HassBeam Card or use a different device/action name.`);
       } else {
-        alert('Fehler beim Speichern des IR-Codes: ' + (error.message || error));
+        alert('Error saving IR code: ' + (error.message || error));
       }
     }
   }
 
   /**
-   * Tabelle leeren
+   * Clear table
    */
   clearTable() {
-    console.log('HassBeam Setup Card: clearTable aufgerufen');
+    console.log('HassBeam Setup Card: clearTable called');
     
-    // Captured events zurücksetzen
+    // Reset captured events
     this.capturedEvents = [];
     
-    // Tabelle leeren
+    // Clear table
     const tableBody = this.querySelector('#setup-table-body');
     if (tableBody) {
       tableBody.innerHTML = `
         <tr>
           <td colspan="5" style="text-align: center; padding: 20px; color: var(--secondary-text-color);">
-            Klicken Sie auf "Start Listening" um zu beginnen
+            Click "Start Listening" to begin
           </td>
         </tr>
       `;
     }
     
-    // Save-Button Status aktualisieren
+    // Update save button state
     this.updateSaveButtonState();
     
-    console.log('HassBeam Setup Card: Tabelle wurde geleert');
+    console.log('HassBeam Setup Card: Table cleared');
   }
 
   /**
-   * Wird aufgerufen wenn die Karte aus dem DOM entfernt wird
+   * Called when the card is removed from the DOM
    */
   disconnectedCallback() {
-    console.log('HassBeam Setup Card: disconnectedCallback - Karte wird entfernt');
+    console.log('HassBeam Setup Card: disconnectedCallback - card being removed');
     this.stopListening();
   }
 
@@ -1297,5 +1306,5 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: 'hassbeam-setup-card',
   name: 'HassBeam Setup',
-  description: 'Zeigt Setup-Optionen für HassBeam an'
+  description: 'Shows setup options for HassBeam devices'
 });
