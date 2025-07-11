@@ -674,7 +674,8 @@ class HassBeamSetupCard extends HTMLElement {
       <ha-card header="${this.config.title || 'HassBeam Setup'}">
         <div class="card-content">
           <div class="top-controls">
-            <button id="start-listening-btn" class="listening-btn large">Start Listening</button>
+            <button id="start-listening-btn" class="listening-btn">Start Listening</button>
+            <button id="clear-table-btn" class="clear-btn">Tabelle leeren</button>
           </div>
           
           <div class="setup-table-container">
@@ -725,7 +726,9 @@ class HassBeamSetupCard extends HTMLElement {
         }
         .top-controls {
           margin-bottom: 20px;
-          text-align: center;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
         }
         .setup-controls {
           margin-top: 20px;
@@ -752,7 +755,7 @@ class HassBeamSetupCard extends HTMLElement {
           color: var(--primary-text-color);
           font-size: 14px;
         }
-        .listening-btn, .save-btn {
+        .listening-btn, .save-btn, .clear-btn {
           padding: 10px 20px;
           border: none;
           border-radius: 4px;
@@ -762,11 +765,11 @@ class HassBeamSetupCard extends HTMLElement {
           font-size: 14px;
           font-weight: 500;
         }
-        .listening-btn.large {
-          padding: 15px 30px;
-          font-size: 16px;
-          font-weight: 600;
-          min-width: 200px;
+        .clear-btn {
+          background: var(--secondary-color, #757575);
+        }
+        .clear-btn:hover {
+          background: var(--secondary-color-dark, #616161);
         }
         .listening-btn:hover, .save-btn:hover {
           background: var(--primary-color-dark);
@@ -863,6 +866,7 @@ class HassBeamSetupCard extends HTMLElement {
   attachEventListeners() {
     const startListeningBtn = this.querySelector('#start-listening-btn');
     const saveCodeBtn = this.querySelector('#save-code-btn');
+    const clearTableBtn = this.querySelector('#clear-table-btn');
     const deviceInput = this.querySelector('#device-input');
     const actionInput = this.querySelector('#action-input');
     
@@ -875,6 +879,12 @@ class HassBeamSetupCard extends HTMLElement {
     if (saveCodeBtn) {
       saveCodeBtn.addEventListener('click', () => {
         this.saveSelectedCode();
+      });
+    }
+    
+    if (clearTableBtn) {
+      clearTableBtn.addEventListener('click', () => {
+        this.clearTable();
       });
     }
     
@@ -1127,6 +1137,33 @@ class HassBeamSetupCard extends HTMLElement {
       console.error('HassBeam Setup: Fehler beim Speichern des IR-Codes:', error);
       alert('Fehler beim Speichern des IR-Codes: ' + error.message);
     }
+  }
+
+  /**
+   * Tabelle leeren
+   */
+  clearTable() {
+    console.log('HassBeam Setup Card: clearTable aufgerufen');
+    
+    // Captured events zurücksetzen
+    this.capturedEvents = [];
+    
+    // Tabelle leeren
+    const tableBody = this.querySelector('#setup-table-body');
+    if (tableBody) {
+      tableBody.innerHTML = `
+        <tr>
+          <td colspan="5" style="text-align: center; padding: 20px; color: var(--secondary-text-color);">
+            Klicken Sie auf "Start Listening" um zu beginnen
+          </td>
+        </tr>
+      `;
+    }
+    
+    // Save-Button Status aktualisieren
+    this.updateSaveButtonState();
+    
+    console.log('HassBeam Setup Card: Tabelle wurde geleert');
   }
 
   /**
