@@ -1202,60 +1202,53 @@ class HassBeamSetupCard extends HTMLElement {
     }
     
     try {
-      // Promise für Event-Behandlung erstellen
-      const savePromise = new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          reject(new Error('Timeout: Keine Antwort vom Server erhalten'));
-        }, 10000); // 10 Sekunden Timeout
-        
-        const eventListener = (event) => {
-          if (event.event_type === 'hassbeam_connect_code_saved' && 
-              event.data.device === device && 
-              event.data.action === action) {
-            
-            clearTimeout(timeout);
-            this._hass.connection.removeEventListener('event', eventListener);
-            
-            if (event.data.success) {
-              resolve({ success: true });
-            } else {
-              resolve({ success: false, error: event.data.error });
-            }
-          }
-        };
-        
-        // Event-Listener registrieren
-        this._hass.connection.addEventListener('event', eventListener);
-      });
+      // Direkte Service-Aufruf ohne Event-Listener
+      console.log('HassBeam Setup: Calling save_ir_code service...');
       
-      // Service aufrufen
-      await this._hass.callService('hassbeam_connect', 'save_ir_code', {
+      const serviceResponse = await this._hass.callService('hassbeam_connect', 'save_ir_code', {
         device: device,
         action: action,
         event_data: JSON.stringify(selectedEvent.rawData)
       });
       
-      // Auf Event warten
-      const result = await savePromise;
+      console.log('HassBeam Setup: Service response:', serviceResponse);
       
-      if (result.success) {
-        alert(`IR-Code erfolgreich gespeichert!\nGerät: ${device}\nAktion: ${action}`);
-        
-        // Nur Aktion-Feld leeren, Gerät bleibt gefüllt, Events zurücksetzen
-        actionInput.value = '';
-        this.capturedEvents = [];
-        this.updateTableWithStatus('IR-Code gespeichert. Geben Sie eine neue Aktion ein für den nächsten Code.');
-        
-        // Save-Button deaktivieren
-        this.updateSaveButtonState();
-      } else {
-        // Fehlerbehandlung
-        if (result.error && result.error.includes('already exists')) {
+      // Warte kurz und überprüfe dann die Antwort
+      setTimeout(async () => {
+        try {
+          // Überprüfe, ob der Code tatsächlich gespeichert wurde
+          const checkResponse = await this._hass.callService('hassbeam_connect', 'get_recent_codes', {
+            device: device,
+            limit: 1
+          });
+          
+          console.log('HassBeam Setup: Check response:', checkResponse);
+          
+          if (checkResponse && checkResponse.codes && checkResponse.codes.length > 0) {
+            const latestCode = checkResponse.codes[0];
+            if (latestCode.device === device && latestCode.action === action) {
+              // Code wurde erfolgreich gespeichert
+              alert(`IR-Code erfolgreich gespeichert!\nGerät: ${device}\nAktion: ${action}`);
+              
+              // Nur Aktion-Feld leeren, Gerät bleibt gefüllt, Events zurücksetzen
+              actionInput.value = '';
+              this.capturedEvents = [];
+              this.updateTableWithStatus('IR-Code gespeichert. Geben Sie eine neue Aktion ein für den nächsten Code.');
+              
+              // Save-Button deaktivieren
+              this.updateSaveButtonState();
+              return;
+            }
+          }
+          
+          // Code wurde nicht gespeichert - wahrscheinlich ein Duplikat
           alert(`Fehler: Ein IR-Code für "${device}.${action}" existiert bereits!\n\nBitte löschen Sie zuerst den vorhandenen Eintrag in der HassBeam Card oder verwenden Sie einen anderen Geräte-/Aktionsname.`);
-        } else {
-          alert('Fehler beim Speichern des IR-Codes: ' + (result.error || 'Unbekannter Fehler'));
+          
+        } catch (checkError) {
+          console.error('HassBeam Setup: Error checking save result:', checkError);
+          alert('Fehler beim Überprüfen des Speichervorgangs: ' + checkError.message);
         }
-      }
+      }, 500); // 500ms warten
       
     } catch (error) {
       console.error('HassBeam Setup: Fehler beim Speichern des IR-Codes:', error);
