@@ -147,11 +147,14 @@ class HassBeamCard extends HTMLElement {
         }
         
         .filter-section input[type="text"] {
-          min-width: 150px;
+          flex: 1;
+          min-width: 120px;
         }
         
         .filter-section input[type="number"] {
-          width: 60px;
+          flex: 1;
+          min-width: 60px;
+          max-width: 80px;
         }
         
         .filter-section button {
@@ -196,6 +199,7 @@ class HassBeamCard extends HTMLElement {
           -webkit-user-select: text;
           -moz-user-select: text;
           -ms-user-select: text;
+          min-width: 150px;
         }
         
         #ir-codes-table th {
@@ -212,6 +216,13 @@ class HassBeamCard extends HTMLElement {
         .actions {
           text-align: center;
           padding: 4px;
+          white-space: nowrap;
+        }
+        
+        .actions button {
+          display: block;
+          width: 100%;
+          margin: 2px 0;
         }
         
         .timestamp {
@@ -273,10 +284,10 @@ class HassBeamCard extends HTMLElement {
           padding: 4px 8px;
           cursor: pointer;
           font-size: 12px;
-          margin-right: 4px;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
+          margin: 2px 0;
+          display: block;
+          width: 100%;
+          text-align: center;
           transition: background-color 0.2s;
         }
         
@@ -296,9 +307,10 @@ class HassBeamCard extends HTMLElement {
           padding: 4px 8px;
           cursor: pointer;
           font-size: 12px;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
+          margin: 2px 0;
+          display: block;
+          width: 100%;
+          text-align: center;
           transition: background-color 0.2s;
         }
         
@@ -1042,6 +1054,7 @@ class HassBeamSetupCard extends HTMLElement {
           padding: 8px 12px;
           text-align: left;
           border-bottom: 1px solid var(--divider-color);
+          min-width: 150px;
         }
         #setup-table th {
           background: var(--table-header-background-color, var(--secondary-background-color));
@@ -1060,6 +1073,10 @@ class HassBeamSetupCard extends HTMLElement {
           color: var(--text-primary-color);
           cursor: pointer;
           font-size: 12px;
+          display: block;
+          width: 100%;
+          margin: 2px 0;
+          text-align: center;
         }
         .use-btn:hover {
           background: var(--primary-color);
@@ -1081,7 +1098,10 @@ class HassBeamSetupCard extends HTMLElement {
           padding: 4px 8px;
           cursor: pointer;
           font-size: 12px;
-          margin-left: 4px;
+          display: block;
+          width: 100%;
+          margin: 2px 0;
+          text-align: center;
         }
         .send-btn-setup:hover {
           background: #45a049;
