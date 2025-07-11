@@ -637,6 +637,8 @@ class HassBeamSetupCard extends HTMLElement {
     super();
     this.config = {};
     this.isListening = false;
+    this.capturedEvents = [];
+    this._eventSubscription = null;
   }
 
   setConfig(config) {
@@ -664,6 +666,7 @@ class HassBeamSetupCard extends HTMLElement {
               <input type="text" id="action-input" placeholder="Aktionsname eingeben..." />
             </div>
             <button id="start-listening-btn" class="listening-btn">Start Listening</button>
+            <button id="save-code-btn" class="save-btn" style="display: none;">IR-Code speichern</button>
           </div>
           
           <div class="setup-table-container">
@@ -671,10 +674,10 @@ class HassBeamSetupCard extends HTMLElement {
               <thead>
                 <tr>
                   <th>Zeitstempel</th>
-                  <th>Gerät</th>
-                  <th>Aktion</th>
                   <th>Protocol</th>
+                  <th>Code</th>
                   <th>Event Data</th>
+                  <th>Aktionen</th>
                 </tr>
               </thead>
               <tbody id="setup-table-body">
@@ -721,7 +724,7 @@ class HassBeamSetupCard extends HTMLElement {
           color: var(--primary-text-color);
           font-size: 14px;
         }
-        .listening-btn {
+        .listening-btn, .save-btn {
           padding: 10px 20px;
           border: none;
           border-radius: 4px;
@@ -731,8 +734,9 @@ class HassBeamSetupCard extends HTMLElement {
           font-size: 14px;
           font-weight: 500;
           align-self: flex-start;
+          margin-right: 8px;
         }
-        .listening-btn:hover {
+        .listening-btn:hover, .save-btn:hover {
           background: var(--primary-color-dark);
         }
         .listening-btn.listening {
@@ -740,6 +744,12 @@ class HassBeamSetupCard extends HTMLElement {
         }
         .listening-btn.listening:hover {
           background: var(--error-color-dark);
+        }
+        .save-btn {
+          background: var(--success-color);
+        }
+        .save-btn:hover {
+          background: var(--success-color-dark);
         }
         .setup-table-container {
           border: 1px solid var(--divider-color);
@@ -767,23 +777,60 @@ class HassBeamSetupCard extends HTMLElement {
         #setup-table tr:hover {
           background: var(--table-row-hover-color, var(--secondary-background-color));
         }
+        .use-btn {
+          padding: 4px 8px;
+          border: none;
+          border-radius: 2px;
+          background: var(--primary-color);
+          color: var(--text-primary-color);
+          cursor: pointer;
+          font-size: 12px;
+        }
+        .use-btn:hover {
+          background: var(--primary-color-dark);
+        }
+        .event-data {
+          font-family: monospace;
+          font-size: 12px;
+          max-width: 300px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .event-data:hover {
+          overflow: visible;
+          white-space: normal;
+          background: var(--card-background-color);
+          position: relative;
+          z-index: 1;
+          word-break: break-all;
+        }
       </style>
     `;
   }
 
   attachEventListeners() {
     const startListeningBtn = this.querySelector('#start-listening-btn');
+    const saveCodeBtn = this.querySelector('#save-code-btn');
+    
     if (startListeningBtn) {
       startListeningBtn.addEventListener('click', () => {
         this.toggleListening();
       });
     }
+    
+    if (saveCodeBtn) {
+      saveCodeBtn.addEventListener('click', () => {
+        this.saveSelectedCode();
+      });
+    }
   }
 
-  toggleListening() {
+  async toggleListening() {
     const deviceInput = this.querySelector('#device-input');
     const actionInput = this.querySelector('#action-input');
     const startListeningBtn = this.querySelector('#start-listening-btn');
+    const saveCodeBtn = this.querySelector('#save-code-btn');
     
     if (!this.isListening) {
       // Validierung der Eingaben
@@ -792,25 +839,202 @@ class HassBeamSetupCard extends HTMLElement {
         return;
       }
       
+      if (!this._hass || !this._hass.connection) {
+        alert('Keine Verbindung zu Home Assistant verfügbar.');
+        return;
+      }
+      
       // Start Listening
       this.isListening = true;
       startListeningBtn.textContent = 'Stop Listening';
       startListeningBtn.classList.add('listening');
       
-      // Hier könnte später die Listening-Logik implementiert werden
+      // Tabelle leeren und Status anzeigen
+      this.updateTableWithStatus('Lausche auf IR-Codes... Drücken Sie eine Taste auf Ihrer Fernbedienung.');
+      
       console.log('HassBeam Setup: Start Listening', {
         device: deviceInput.value,
         action: actionInput.value
       });
       
+      // Event-Subscription starten
+      try {
+        this._eventSubscription = await this._hass.connection.subscribeEvents((event) => {
+          console.log('HassBeam Setup: IR-Event empfangen', event);
+          this.handleIrEvent(event);
+        }, 'esphome.hassbeam.ir_received');
+        
+        console.log('HassBeam Setup: Event-Subscription erfolgreich eingerichtet');
+      } catch (error) {
+        console.error('HassBeam Setup: Fehler beim Einrichten der Event-Subscription:', error);
+        alert('Fehler beim Starten des Listening: ' + error.message);
+        this.stopListening();
+      }
+      
     } else {
       // Stop Listening
-      this.isListening = false;
-      startListeningBtn.textContent = 'Start Listening';
-      startListeningBtn.classList.remove('listening');
-      
-      console.log('HassBeam Setup: Stop Listening');
+      this.stopListening();
     }
+  }
+
+  stopListening() {
+    const startListeningBtn = this.querySelector('#start-listening-btn');
+    const saveCodeBtn = this.querySelector('#save-code-btn');
+    
+    this.isListening = false;
+    startListeningBtn.textContent = 'Start Listening';
+    startListeningBtn.classList.remove('listening');
+    
+    // Event-Subscription beenden
+    if (this._eventSubscription && typeof this._eventSubscription === 'function') {
+      try {
+        this._eventSubscription();
+        console.log('HassBeam Setup: Event-Subscription beendet');
+      } catch (error) {
+        console.error('HassBeam Setup: Fehler beim Beenden der Event-Subscription:', error);
+      }
+      this._eventSubscription = null;
+    }
+    
+    // Save-Button anzeigen wenn Events vorhanden
+    if (this.capturedEvents.length > 0) {
+      saveCodeBtn.style.display = 'block';
+    }
+    
+    console.log('HassBeam Setup: Stop Listening');
+  }
+
+  handleIrEvent(event) {
+    console.log('HassBeam Setup: IR-Event verarbeitet', event);
+    
+    // Event zu captured events hinzufügen
+    const eventData = {
+      timestamp: new Date(),
+      protocol: event.data?.protocol || 'Unknown',
+      code: event.data?.code || event.data?.data || 'N/A',
+      rawData: event.data,
+      selected: false
+    };
+    
+    this.capturedEvents.push(eventData);
+    
+    // Tabelle aktualisieren
+    this.updateTable();
+  }
+
+  updateTable() {
+    const tableBody = this.querySelector('#setup-table-body');
+    if (!tableBody) return;
+    
+    if (this.capturedEvents.length === 0) {
+      this.updateTableWithStatus('Noch keine IR-Codes empfangen');
+      return;
+    }
+    
+    tableBody.innerHTML = this.capturedEvents.map((event, index) => {
+      const timestamp = event.timestamp.toLocaleString('de-DE');
+      const eventDataStr = JSON.stringify(event.rawData);
+      
+      return `
+        <tr>
+          <td>${timestamp}</td>
+          <td>${event.protocol}</td>
+          <td style="font-family: monospace;">${event.code}</td>
+          <td class="event-data" title="${eventDataStr}">${eventDataStr}</td>
+          <td>
+            <button class="use-btn" onclick="this.getRootNode().host.selectEvent(${index})">
+              ${event.selected ? 'Ausgewählt' : 'Auswählen'}
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  updateTableWithStatus(message) {
+    const tableBody = this.querySelector('#setup-table-body');
+    if (!tableBody) return;
+    
+    tableBody.innerHTML = `
+      <tr>
+        <td colspan="5" style="text-align: center; padding: 20px; color: var(--secondary-text-color);">
+          ${message}
+        </td>
+      </tr>
+    `;
+  }
+
+  selectEvent(index) {
+    // Alle Events deselektieren
+    this.capturedEvents.forEach(event => event.selected = false);
+    
+    // Gewähltes Event selektieren
+    if (this.capturedEvents[index]) {
+      this.capturedEvents[index].selected = true;
+    }
+    
+    // Tabelle aktualisieren
+    this.updateTable();
+    
+    // Save-Button anzeigen
+    const saveCodeBtn = this.querySelector('#save-code-btn');
+    if (saveCodeBtn) {
+      saveCodeBtn.style.display = 'block';
+    }
+  }
+
+  async saveSelectedCode() {
+    const selectedEvent = this.capturedEvents.find(event => event.selected);
+    const deviceInput = this.querySelector('#device-input');
+    const actionInput = this.querySelector('#action-input');
+    
+    if (!selectedEvent) {
+      alert('Bitte wählen Sie einen IR-Code aus der Tabelle aus.');
+      return;
+    }
+    
+    if (!this._hass) {
+      alert('Keine Verbindung zu Home Assistant verfügbar.');
+      return;
+    }
+    
+    const device = deviceInput.value.trim();
+    const action = actionInput.value.trim();
+    
+    try {
+      // Service zum Speichern des IR-Codes aufrufen
+      await this._hass.callService('hassbeam_connect', 'save_ir_code', {
+        device: device,
+        action: action,
+        event_data: JSON.stringify(selectedEvent.rawData)
+      });
+      
+      alert(`IR-Code erfolgreich gespeichert!\nGerät: ${device}\nAktion: ${action}`);
+      
+      // Felder leeren und Events zurücksetzen
+      deviceInput.value = '';
+      actionInput.value = '';
+      this.capturedEvents = [];
+      this.updateTableWithStatus('IR-Code gespeichert. Geben Sie neue Daten ein für den nächsten Code.');
+      
+      // Save-Button verstecken
+      const saveCodeBtn = this.querySelector('#save-code-btn');
+      if (saveCodeBtn) {
+        saveCodeBtn.style.display = 'none';
+      }
+      
+    } catch (error) {
+      console.error('HassBeam Setup: Fehler beim Speichern des IR-Codes:', error);
+      alert('Fehler beim Speichern des IR-Codes: ' + error.message);
+    }
+  }
+
+  /**
+   * Wird aufgerufen wenn die Karte aus dem DOM entfernt wird
+   */
+  disconnectedCallback() {
+    console.log('HassBeam Setup Card: disconnectedCallback - Karte wird entfernt');
+    this.stopListening();
   }
 
   static get properties() {
