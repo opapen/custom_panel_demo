@@ -72,6 +72,7 @@ class HassBeamCard extends HTMLElement {
           <input type="text" id="device-filter" placeholder="Enter device name..." value="${this.currentDevice}" />
           <label>Filter by Action:</label>
           <input type="text" id="action-filter" placeholder="Enter action name..." value="${this.currentAction}" />
+          <br />
           <label>Limit:</label>
           <input type="number" id="limit-input" min="1" max="100" value="${this.currentLimit}" />
           <button id="refresh-btn">Refresh</button>
@@ -149,6 +150,7 @@ class HassBeamCard extends HTMLElement {
         .filter-section input[type="text"] {
           flex: 1;
           min-width: 120px;
+          max-width: 80px;
         }
         
         .filter-section input[type="number"] {
@@ -198,7 +200,7 @@ class HassBeamCard extends HTMLElement {
           -webkit-user-select: text;
           -moz-user-select: text;
           -ms-user-select: text;
-          min-width: 80px;
+          min-width: 50px;
         }
         
         #ir-codes-table th {
@@ -960,6 +962,8 @@ class HassBeamSetupCard extends HTMLElement {
         }
         .filter-group input {
           flex: 1;
+          min-width: 120px;
+          max-width: 200px;
           padding: 8px 12px;
           border: 1px solid var(--divider-color);
           border-radius: 4px;
@@ -1053,7 +1057,7 @@ class HassBeamSetupCard extends HTMLElement {
           padding: 8px 12px;
           text-align: left;
           border-bottom: 1px solid var(--divider-color);
-          min-width: 80px;
+          min-width: 50px;
         }
         #setup-table th {
           background: var(--table-header-background-color, var(--secondary-background-color));
