@@ -1221,7 +1221,13 @@ class HassBeamSetupCard extends HTMLElement {
       
     } catch (error) {
       console.error('HassBeam Setup: Fehler beim Speichern des IR-Codes:', error);
-      alert('Fehler beim Speichern des IR-Codes: ' + error.message);
+      
+      // Spezielle Behandlung für Duplikat-Fehler
+      if (error.message && error.message.includes('already exists')) {
+        alert(`Fehler: Ein IR-Code für "${device}.${action}" existiert bereits!\n\nBitte löschen Sie zuerst den vorhandenen Eintrag in der HassBeam Card oder verwenden Sie einen anderen Geräte-/Aktionsname.`);
+      } else {
+        alert('Fehler beim Speichern des IR-Codes: ' + error.message);
+      }
     }
   }
 
