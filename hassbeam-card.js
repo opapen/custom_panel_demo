@@ -10,6 +10,7 @@ class HassBeamCard extends HTMLElement {
     this.config = {};
     this.irCodes = [];
     this.currentDevice = '';
+    this.currentAction = '';
     this.currentLimit = 10;
     this._hass = null;
     this._activeSubscription = null; // Verwalte aktive Subscription
@@ -32,10 +33,12 @@ class HassBeamCard extends HTMLElement {
 
     // Aktuelle Werte für Filter und Limit initialisieren
     this.currentDevice = config.device || '';
+    this.currentAction = config.action || '';
     this.currentLimit = config.limit || 10;
 
     console.log('HassBeam Card: Konfiguration gesetzt', {
       device: this.currentDevice,
+      action: this.currentAction,
       limit: this.currentLimit,
       show_table: config.show_table
     });
@@ -86,6 +89,8 @@ class HassBeamCard extends HTMLElement {
         <div class="filter-section">
           <label>Gerät filtern:</label>
           <input type="text" id="device-filter" placeholder="Gerätename eingeben..." value="${this.currentDevice}" />
+          <label>Aktion filtern:</label>
+          <input type="text" id="action-filter" placeholder="Aktion eingeben..." value="${this.currentAction}" />
           <label>Limit:</label>
           <input type="number" id="limit-input" min="1" max="100" value="${this.currentLimit}" />
           <button id="refresh-btn">Aktualisieren</button>
@@ -341,6 +346,13 @@ class HassBeamCard extends HTMLElement {
         }
       }
     });
+    
+    const actionFilter = this.querySelector('#action-filter');
+    if (actionFilter) {
+      actionFilter.addEventListener('input', () => {
+        this.updateFiltersFromUI();
+      });
+    }
   }
 
   /**
@@ -351,15 +363,18 @@ class HassBeamCard extends HTMLElement {
     
     const deviceFilter = this.querySelector('#device-filter');
     const limitInput = this.querySelector('#limit-input');
+    const actionFilter = this.querySelector('#action-filter');
 
     const oldDevice = this.currentDevice;
     const oldLimit = this.currentLimit;
-
+    const oldAction = this.currentAction;
     this.currentDevice = deviceFilter?.value || '';
+    this.currentAction = actionFilter?.value || '';
     this.currentLimit = limitInput?.value || '10';
 
     console.log('HassBeam Card: Filter aktualisiert', {
       device: { alt: oldDevice, neu: this.currentDevice },
+      action: { alt: oldAction, neu: this.currentAction },
       limit: { alt: oldLimit, neu: this.currentLimit }
     });
   }
@@ -472,10 +487,13 @@ class HassBeamCard extends HTMLElement {
     });
     
     const serviceData = { limit: parseInt(this.currentLimit) || 10 };
-    
     if (this.currentDevice?.trim()) {
       serviceData.device = this.currentDevice.trim();
       console.log('HassBeam Card: Gerätename zu Service-Daten hinzugefügt', serviceData.device);
+    }
+    if (this.currentAction?.trim()) {
+      serviceData.action = this.currentAction.trim();
+      console.log('HassBeam Card: Aktionsname zu Service-Daten hinzugefügt', serviceData.action);
     }
 
     console.log('HassBeam Card: Service-Daten vorbereitet', serviceData);
@@ -727,6 +745,7 @@ window.customCards.push({
   name: 'HassBeam Card',
   description: 'Eine Card zur Anzeige von IR-Events mit HassBeam inkl. Tabelle'
 });
+
 
 // HASSBEAM SETUP CARD (zweite Card im selben File)
 console.info("HassBeam Setup Card v1.0.0 geladen");
@@ -1181,78 +1200,90 @@ class HassBeamSetupCard extends HTMLElement {
     const selectedEvent = this.capturedEvents.find(event => event.selected);
     const deviceInput = this.querySelector('#device-input');
     const actionInput = this.querySelector('#action-input');
-    
+
     if (!selectedEvent) {
       alert('Bitte wählen Sie einen IR-Code aus der Tabelle aus.');
       return;
     }
-    
+
     const device = deviceInput.value.trim();
     const action = actionInput.value.trim();
-    
+
     // Validierung der Eingaben
     if (!device || !action) {
       alert('Bitte geben Sie sowohl Gerät als auch Aktion ein.');
       return;
     }
-    
+
     if (!this._hass) {
       alert('Keine Verbindung zu Home Assistant verfügbar.');
       return;
     }
-    
+
     try {
-      // Direkte Service-Aufruf ohne Event-Listener
+      // Zeitstempel vor dem Speichern erfassen
+      const beforeSave = Date.now();
+
+      // Direkter Service-Aufruf
       console.log('HassBeam Setup: Calling save_ir_code service...');
-      
       const serviceResponse = await this._hass.callService('hassbeam_connect', 'save_ir_code', {
         device: device,
         action: action,
         event_data: JSON.stringify(selectedEvent.rawData)
       });
-      
       console.log('HassBeam Setup: Service response:', serviceResponse);
-      
-      // Warte kurz und überprüfe dann die Antwort
+
+      // Warte kurz und prüfe dann gezielt auf device+action
       setTimeout(async () => {
         try {
-          // Überprüfe, ob der Code tatsächlich gespeichert wurde
+          // Jetzt gezielt nach device+action filtern
           const checkResponse = await this._hass.callService('hassbeam_connect', 'get_recent_codes', {
             device: device,
+            action: action,
             limit: 1
           });
-          
           console.log('HassBeam Setup: Check response:', checkResponse);
-          
-          if (checkResponse && checkResponse.codes && checkResponse.codes.length > 0) {
-            const latestCode = checkResponse.codes[0];
-            if (latestCode.device === device && latestCode.action === action) {
-              // Code wurde erfolgreich gespeichert
+
+          const matchingCode = checkResponse && checkResponse.codes && checkResponse.codes.length > 0
+            ? checkResponse.codes[0]
+            : null;
+
+          if (matchingCode) {
+            // Prüfe, ob der Code vor kurzem erstellt wurde (innerhalb der letzten 5 Sekunden)
+            const codeTime = new Date(matchingCode.created_at).getTime();
+            const timeDiff = Date.now() - codeTime;
+            console.log('HassBeam Setup: Code found, time difference:', timeDiff, 'ms');
+
+            if (timeDiff < 5000) {
+              // Code wurde gerade erfolgreich gespeichert
               alert(`IR-Code erfolgreich gespeichert!\nGerät: ${device}\nAktion: ${action}`);
-              
-              // Nur Aktion-Feld leeren, Gerät bleibt gefüllt, Events zurücksetzen
               actionInput.value = '';
               this.capturedEvents = [];
               this.updateTableWithStatus('IR-Code gespeichert. Geben Sie eine neue Aktion ein für den nächsten Code.');
-              
-              // Save-Button deaktivieren
               this.updateSaveButtonState();
               return;
+            } else {
+              // Code ist älter - wahrscheinlich ein Duplikat
+              alert(`Fehler: Ein IR-Code für "${device}.${action}" existiert bereits!\n\nBitte löschen Sie zuerst den vorhandenen Eintrag in der HassBeam Card oder verwenden Sie einen anderen Geräte-/Aktionsnamen.`);
+              return;
             }
+          } else {
+            // Kein Code gefunden - unerwarteter Fehler
+            alert('Unerwarteter Fehler beim Speichern. Bitte überprüfen Sie die Logs.');
           }
-          
-          // Code wurde nicht gespeichert - wahrscheinlich ein Duplikat
-          alert(`Fehler: Ein IR-Code für "${device}.${action}" existiert bereits!\n\nBitte löschen Sie zuerst den vorhandenen Eintrag in der HassBeam Card oder verwenden Sie einen anderen Geräte-/Aktionsname.`);
-          
         } catch (checkError) {
           console.error('HassBeam Setup: Error checking save result:', checkError);
           alert('Fehler beim Überprüfen des Speichervorgangs: ' + checkError.message);
         }
-      }, 500); // 500ms warten
-      
+      }, 1000); // 1 Sekunde warten
     } catch (error) {
+      // Backend gibt Fehler zurück, z.B. bei Duplikat
       console.error('HassBeam Setup: Fehler beim Speichern des IR-Codes:', error);
-      alert('Fehler beim Speichern des IR-Codes: ' + error.message);
+      if (error && error.message && error.message.includes('already exists')) {
+        alert(`Fehler: Ein IR-Code für "${device}.${action}" existiert bereits!\n\nBitte löschen Sie zuerst den vorhandenen Eintrag in der HassBeam Card oder verwenden Sie einen anderen Geräte-/Aktionsnamen.`);
+      } else {
+        alert('Fehler beim Speichern des IR-Codes: ' + (error.message || error));
+      }
     }
   }
 

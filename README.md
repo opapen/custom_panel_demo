@@ -73,6 +73,7 @@ device: "TV"                     # Optional: Gerätename für Filterung
 - Home Assistant mit Lovelace UI
 - HassBeam Connect Integration installiert
 - Service `hassbeam_connect.get_recent_codes` verfügbar
+  - Optionales Feld: `action` (filtert nach Aktionsnamen)
 - Entity `sensor.hassbeam_last_ir` verfügbar (optional)
 
 ## Screenshot

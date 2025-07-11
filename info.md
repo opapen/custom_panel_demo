@@ -94,6 +94,7 @@ Die Card nutzt den Service `hassbeam_connect.get_recent_codes` um die IR-Code-Da
 ### Service-Parameter
 
 - `device` (optional): Filtert nach einem bestimmten Gerät
+- `action` (optional): Filtert nach einer bestimmten Aktion
 - `limit` (optional, Standard: 10): Anzahl der zurückzugebenden Codes
 
 ### Beispiel-Aufruf
@@ -102,6 +103,7 @@ Die Card nutzt den Service `hassbeam_connect.get_recent_codes` um die IR-Code-Da
 service: hassbeam_connect.get_recent_codes
 data:
   device: "TV"
+  action: "power_on"
   limit: 25
 ```
 
