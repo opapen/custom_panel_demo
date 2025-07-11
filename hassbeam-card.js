@@ -199,7 +199,7 @@ class HassBeamCard extends HTMLElement {
           -webkit-user-select: text;
           -moz-user-select: text;
           -ms-user-select: text;
-          min-width: 150px;
+          min-width: 80px;
         }
         
         #ir-codes-table th {
@@ -1054,7 +1054,7 @@ class HassBeamSetupCard extends HTMLElement {
           padding: 8px 12px;
           text-align: left;
           border-bottom: 1px solid var(--divider-color);
-          min-width: 150px;
+          min-width: 80px;
         }
         #setup-table th {
           background: var(--table-header-background-color, var(--secondary-background-color));
