@@ -184,7 +184,6 @@ class HassBeamCard extends HTMLElement {
           width: 100%;
           border-collapse: collapse;
           font-size: 14px;
-          table-layout: fixed !important;
         }
         
         #ir-codes-table th,
