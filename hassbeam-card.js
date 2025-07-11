@@ -100,7 +100,8 @@ class HassBeamCard extends HTMLElement {
             <col style="width: 5%; min-width: 100px;">
             <col style="width: 5%; min-width: 100px;">
             <col style="width: 5%; min-width: 100px;">
-            <col style="width: 70%;min-width: 530px;">
+            <col style="width: 65%;min-width: 450px;">
+            <col style="width: 5%; min-width: 50px;">
           </colgroup>
           <thead>
             <tr>
@@ -110,11 +111,12 @@ class HassBeamCard extends HTMLElement {
               <th>Aktion</th>
               <th>Protocol</th>
               <th>Event Data</th>
+              <th>Aktionen</th>
             </tr>
           </thead>
           <tbody id="table-body">
             <tr>
-              <td colspan="6" style="text-align: center; padding: 20px; color: var(--secondary-text-color);">
+              <td colspan="7" style="text-align: center; padding: 20px; color: var(--secondary-text-color);">
                 Klicke auf "Aktualisieren" um IR-Codes zu laden
               </td>
             </tr>
@@ -277,6 +279,36 @@ class HassBeamCard extends HTMLElement {
           position: relative;
           z-index: 1;
           word-break: break-all;
+        }
+        
+        .actions {
+          text-align: center;
+          padding: 4px;
+        }
+        
+        .delete-btn {
+          background: #ff4444;
+          color: white;
+          border: none;
+          border-radius: 50%;
+          width: 24px;
+          height: 24px;
+          cursor: pointer;
+          font-size: 16px;
+          font-weight: bold;
+          line-height: 1;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          transition: background-color 0.2s;
+        }
+        
+        .delete-btn:hover {
+          background: #cc0000;
+        }
+        
+        .delete-btn:active {
+          transform: scale(0.95);
         }
       </style>
     `;
@@ -530,10 +562,16 @@ class HassBeamCard extends HTMLElement {
         <td class="action">${code.action}</td>
         <td class="protocol">${protocol}</td>
         <td class="event-data" title="${formattedEventData}">${formattedEventData}</td>
+        <td class="actions">
+          <button class="delete-btn" onclick="this.getRootNode().host.deleteCode(${code.id})" title="Löschen">
+            ×
+          </button>
+        </td>
       </tr>
     `;
     
     console.log('HassBeam Card: Tabellenzeile erstellt', {
+      id: code.id,
       device: code.device,
       action: code.action,
       protocol: protocol,
@@ -605,7 +643,7 @@ class HassBeamCard extends HTMLElement {
     if (tableBody) {
       tableBody.innerHTML = `
         <tr>
-          <td colspan="6" style="text-align: center; padding: 20px; color: var(--error-color);">
+          <td colspan="7" style="text-align: center; padding: 20px; color: var(--error-color);">
             ${message}
           </td>
         </tr>
@@ -625,6 +663,40 @@ class HassBeamCard extends HTMLElement {
       hass: {},
       config: {}
     };
+  }
+
+  /**
+   * IR-Code löschen
+   * @param {number} codeId - ID des zu löschenden Codes
+   */
+  async deleteCode(codeId) {
+    console.log('HassBeam Card: deleteCode aufgerufen', codeId);
+    
+    if (!this._hass) {
+      console.error('HassBeam Card: Keine Home Assistant Instanz verfügbar');
+      return;
+    }
+    
+    // Bestätigung anzeigen
+    if (!confirm('Möchten Sie diesen IR-Code wirklich löschen?')) {
+      return;
+    }
+    
+    try {
+      // Service aufrufen
+      const result = await this._hass.callService('hassbeam_connect', 'delete_ir_code', {
+        id: codeId
+      });
+      
+      console.log('HassBeam Card: IR-Code gelöscht', result);
+      
+      // Tabelle aktualisieren
+      await this.loadIrCodes();
+      
+    } catch (error) {
+      console.error('HassBeam Card: Fehler beim Löschen des IR-Codes:', error);
+      alert('Fehler beim Löschen des IR-Codes: ' + error.message);
+    }
   }
 
   /**
@@ -772,19 +844,21 @@ class HassBeamSetupCard extends HTMLElement {
           background: var(--secondary-color-dark, #616161);
         }
         .listening-btn:hover, .save-btn:hover {
-          background: var(--primary-color-dark);
+          filter: brightness(0.9);
         }
         .listening-btn.listening {
           background: var(--error-color);
         }
         .listening-btn.listening:hover {
-          background: var(--error-color-dark);
+          background: var(--error-color);
+          filter: brightness(0.9);
         }
         .save-btn {
           background: var(--success-color);
         }
         .save-btn:hover {
-          background: var(--success-color-dark);
+          background: var(--success-color);
+          filter: brightness(0.9);
         }
         .save-btn:disabled {
           background: var(--disabled-color, #cccccc);
@@ -834,14 +908,16 @@ class HassBeamSetupCard extends HTMLElement {
           font-size: 12px;
         }
         .use-btn:hover {
-          background: var(--primary-color-dark);
+          background: var(--primary-color);
+          filter: brightness(0.9);
         }
         .use-btn.selected {
           background: var(--success-color);
           color: var(--text-primary-color);
         }
         .use-btn.selected:hover {
-          background: var(--success-color-dark);
+          background: var(--success-color);
+          filter: brightness(0.9);
         }
         .event-data {
           font-family: monospace;
