@@ -629,18 +629,20 @@ window.customCards.push({
   description: 'Eine Card zur Anzeige von IR-Events mit HassBeam inkl. Tabelle'
 });
 
-// HASSBEAM STATS CARD (zweite Card im selben File)
-console.info("HassBeam Stats Card v1.0.0 geladen");
+// HASSBEAM SETUP CARD (zweite Card im selben File)
+console.info("HassBeam Setup Card v1.0.0 geladen");
 
-class HassBeamStatsCard extends HTMLElement {
+class HassBeamSetupCard extends HTMLElement {
   constructor() {
     super();
     this.config = {};
+    this.isListening = false;
   }
 
   setConfig(config) {
     this.config = config;
     this.render();
+    this.attachEventListeners();
   }
 
   set hass(hass) {
@@ -650,9 +652,40 @@ class HassBeamStatsCard extends HTMLElement {
 
   render() {
     this.innerHTML = `
-      <ha-card header="${this.config.title || 'HassBeam Statistiken'}">
+      <ha-card header="${this.config.title || 'HassBeam Setup'}">
         <div class="card-content">
-          <p>Hier könnten Statistiken zu IR-Events angezeigt werden.</p>
+          <div class="setup-controls">
+            <div class="input-group">
+              <label for="device-input">Gerät:</label>
+              <input type="text" id="device-input" placeholder="Gerätename eingeben..." />
+            </div>
+            <div class="input-group">
+              <label for="action-input">Aktion:</label>
+              <input type="text" id="action-input" placeholder="Aktionsname eingeben..." />
+            </div>
+            <button id="start-listening-btn" class="listening-btn">Start Listening</button>
+          </div>
+          
+          <div class="setup-table-container">
+            <table id="setup-table">
+              <thead>
+                <tr>
+                  <th>Zeitstempel</th>
+                  <th>Gerät</th>
+                  <th>Aktion</th>
+                  <th>Protocol</th>
+                  <th>Event Data</th>
+                </tr>
+              </thead>
+              <tbody id="setup-table-body">
+                <tr>
+                  <td colspan="5" style="text-align: center; padding: 20px; color: var(--secondary-text-color);">
+                    Geben Sie Gerät und Aktion ein und klicken Sie auf "Start Listening"
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </ha-card>
       <style>
@@ -664,8 +697,120 @@ class HassBeamStatsCard extends HTMLElement {
         .card-content {
           padding: 16px;
         }
+        .setup-controls {
+          margin-bottom: 20px;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+        .input-group {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .input-group label {
+          font-weight: 500;
+          min-width: 80px;
+        }
+        .input-group input {
+          flex: 1;
+          padding: 8px 12px;
+          border: 1px solid var(--divider-color);
+          border-radius: 4px;
+          background: var(--card-background-color);
+          color: var(--primary-text-color);
+          font-size: 14px;
+        }
+        .listening-btn {
+          padding: 10px 20px;
+          border: none;
+          border-radius: 4px;
+          background: var(--primary-color);
+          color: var(--text-primary-color);
+          cursor: pointer;
+          font-size: 14px;
+          font-weight: 500;
+          align-self: flex-start;
+        }
+        .listening-btn:hover {
+          background: var(--primary-color-dark);
+        }
+        .listening-btn.listening {
+          background: var(--error-color);
+        }
+        .listening-btn.listening:hover {
+          background: var(--error-color-dark);
+        }
+        .setup-table-container {
+          border: 1px solid var(--divider-color);
+          border-radius: 4px;
+          overflow: auto;
+          max-height: 400px;
+        }
+        #setup-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 14px;
+        }
+        #setup-table th,
+        #setup-table td {
+          padding: 8px 12px;
+          text-align: left;
+          border-bottom: 1px solid var(--divider-color);
+        }
+        #setup-table th {
+          background: var(--table-header-background-color, var(--secondary-background-color));
+          font-weight: 500;
+          position: sticky;
+          top: 0;
+        }
+        #setup-table tr:hover {
+          background: var(--table-row-hover-color, var(--secondary-background-color));
+        }
       </style>
     `;
+  }
+
+  attachEventListeners() {
+    const startListeningBtn = this.querySelector('#start-listening-btn');
+    if (startListeningBtn) {
+      startListeningBtn.addEventListener('click', () => {
+        this.toggleListening();
+      });
+    }
+  }
+
+  toggleListening() {
+    const deviceInput = this.querySelector('#device-input');
+    const actionInput = this.querySelector('#action-input');
+    const startListeningBtn = this.querySelector('#start-listening-btn');
+    
+    if (!this.isListening) {
+      // Validierung der Eingaben
+      if (!deviceInput.value.trim() || !actionInput.value.trim()) {
+        alert('Bitte geben Sie sowohl Gerät als auch Aktion ein.');
+        return;
+      }
+      
+      // Start Listening
+      this.isListening = true;
+      startListeningBtn.textContent = 'Stop Listening';
+      startListeningBtn.classList.add('listening');
+      
+      // Hier könnte später die Listening-Logik implementiert werden
+      console.log('HassBeam Setup: Start Listening', {
+        device: deviceInput.value,
+        action: actionInput.value
+      });
+      
+    } else {
+      // Stop Listening
+      this.isListening = false;
+      startListeningBtn.textContent = 'Start Listening';
+      startListeningBtn.classList.remove('listening');
+      
+      console.log('HassBeam Setup: Stop Listening');
+    }
   }
 
   static get properties() {
@@ -673,11 +818,11 @@ class HassBeamStatsCard extends HTMLElement {
   }
 }
 
-customElements.define('hassbeam-stats-card', HassBeamStatsCard);
+customElements.define('hassbeam-setup-card', HassBeamSetupCard);
 
 window.customCards = window.customCards || [];
 window.customCards.push({
-  type: 'hassbeam-stats-card',
-  name: 'HassBeam Statistiken',
-  description: 'Zeigt Statistiken zu IR-Events an'
+  type: 'hassbeam-setup-card',
+  name: 'HassBeam Setup',
+  description: 'Zeigt Setup-Optionen für HassBeam an'
 });
