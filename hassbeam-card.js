@@ -548,16 +548,18 @@ class HassBeamCard extends HTMLElement {
         originalData: parsed
       });
       
-      const formattedEventData = Object.entries(parsed)
+      // Device-Name aus der Anzeige ausblenden
+      const filteredData = Object.entries(parsed)
+        .filter(([key]) => key !== 'device_name')
         .map(([key, value]) => `${key}: ${value}`)
         .join(', ');
       
-      console.log('HassBeam Card: Event-Daten formatiert', {
+      console.log('HassBeam Card: Event-Daten formatiert (ohne device_name)', {
         protocol: protocol,
-        formattedEventData: formattedEventData
+        formattedEventData: filteredData
       });
       
-      return { protocol, formattedEventData };
+      return { protocol, formattedEventData: filteredData };
     } catch (e) {
       console.error('HassBeam Card: Fehler beim Parsen der Event-Daten:', e, eventData);
       return { protocol: 'N/A', formattedEventData: eventData };
@@ -952,7 +954,10 @@ class HassBeamSetupCard extends HTMLElement {
     
     tableBody.innerHTML = uniqueEvents.map((event, index) => {
       const timeString = event.timestamp.toLocaleTimeString('de-DE');
-      const eventDataStr = JSON.stringify(event.rawData);
+      // Device-Name aus Event-Daten entfernen für die Anzeige
+      const eventDataCopy = { ...event.rawData };
+      delete eventDataCopy.device_name;
+      const eventDataStr = JSON.stringify(eventDataCopy);
       
       return `
         <tr>
