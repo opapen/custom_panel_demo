@@ -1221,57 +1221,92 @@ class HassBeamSetupCard extends HTMLElement {
     }
 
     try {
-      // Service-Aufruf zum Speichern (Antwort wird ignoriert)
+      // Service-Aufruf zum Speichern
       console.log('HassBeam Setup: Calling save_ir_code service...');
       await this._hass.callService('hassbeam_connect', 'save_ir_code', {
         device: device,
         action: action,
         event_data: JSON.stringify(selectedEvent.rawData)
       });
-      console.log('HassBeam Setup: save_ir_code service called. Checking for result...');
+      console.log('HassBeam Setup: save_ir_code service called. Setting up verification...');
 
-      // Warte kurz und prüfe dann gezielt auf device+action
-      setTimeout(async () => {
-        try {
-          const checkResponse = await this._hass.callService('hassbeam_connect', 'get_recent_codes', {
-            device: device,
-            action: action,
-            limit: 1
-          });
-          console.log('HassBeam Setup: Check response:', checkResponse);
+      // Event-Subscription für die Verifikation einrichten
+      let hasReceived = false;
+      let verificationSubscription = null;
 
-          const matchingCode = checkResponse && checkResponse.codes && checkResponse.codes.length > 0
-            ? checkResponse.codes[0]
-            : null;
+      try {
+        verificationSubscription = await this._hass.connection.subscribeEvents((event) => {
+          console.log('HassBeam Setup: Verification event received:', event);
+          
+          if (event.data?.codes && !hasReceived) {
+            hasReceived = true;
+            
+            const matchingCode = event.data.codes.find(code => 
+              code.device === device && code.action === action
+            );
 
-          if (matchingCode) {
-            // Prüfe, ob der Code vor kurzem erstellt wurde (innerhalb der letzten 5 Sekunden)
-            const codeTime = new Date(matchingCode.created_at).getTime();
-            const timeDiff = Date.now() - codeTime;
-            console.log('HassBeam Setup: Code found, time difference:', timeDiff, 'ms');
+            if (matchingCode) {
+              // Prüfe, ob der Code vor kurzem erstellt wurde (innerhalb der letzten 5 Sekunden)
+              const codeTime = new Date(matchingCode.created_at).getTime();
+              const timeDiff = Date.now() - codeTime;
+              console.log('HassBeam Setup: Code found, time difference:', timeDiff, 'ms');
 
-            if (timeDiff < 5000) {
-              // Code wurde gerade erfolgreich gespeichert
-              alert(`IR-Code erfolgreich gespeichert!\nGerät: ${device}\nAktion: ${action}`);
-              actionInput.value = '';
-              this.capturedEvents = [];
-              this.updateTableWithStatus('IR-Code gespeichert. Geben Sie eine neue Aktion ein für den nächsten Code.');
-              this.updateSaveButtonState();
-              return;
+              if (timeDiff < 5000) {
+                // Code wurde gerade erfolgreich gespeichert
+                alert(`IR-Code erfolgreich gespeichert!\nGerät: ${device}\nAktion: ${action}`);
+                actionInput.value = '';
+                this.capturedEvents = [];
+                this.updateTableWithStatus('IR-Code gespeichert. Geben Sie eine neue Aktion ein für den nächsten Code.');
+                this.updateSaveButtonState();
+              } else {
+                // Code ist älter - wahrscheinlich ein Duplikat
+                alert(`Fehler: Ein IR-Code für "${device}.${action}" existiert bereits!\n\nBitte löschen Sie zuerst den vorhandenen Eintrag in der HassBeam Card oder verwenden Sie einen anderen Geräte-/Aktionsnamen.`);
+              }
             } else {
-              // Code ist älter - wahrscheinlich ein Duplikat
-              alert(`Fehler: Ein IR-Code für "${device}.${action}" existiert bereits!\n\nBitte löschen Sie zuerst den vorhandenen Eintrag in der HassBeam Card oder verwenden Sie einen anderen Geräte-/Aktionsnamen.`);
-              return;
+              // Kein passender Code gefunden
+              alert('Fehler: Der IR-Code konnte nicht gespeichert werden. Bitte prüfen Sie die Home Assistant Logs.');
             }
-          } else {
-            // Kein Code gefunden - entweder Fehler beim Speichern oder Race Condition
-            alert('Fehler: Der IR-Code konnte nicht gespeichert werden oder existiert bereits. Bitte prüfen Sie die Home Assistant Logs.');
+
+            // Subscription beenden
+            if (verificationSubscription && typeof verificationSubscription === 'function') {
+              verificationSubscription();
+            }
           }
-        } catch (checkError) {
-          console.error('HassBeam Setup: Error checking save result:', checkError);
-          alert('Fehler beim Überprüfen des Speichervorgangs: ' + (checkError.message || checkError));
-        }
-      }, 1000); // 1 Sekunde warten
+        }, 'hassbeam_connect_codes_retrieved');
+
+        // Nach kurzer Wartezeit get_recent_codes aufrufen
+        setTimeout(async () => {
+          try {
+            await this._hass.callService('hassbeam_connect', 'get_recent_codes', {
+              device: device,
+              action: action,
+              limit: 1
+            });
+          } catch (checkError) {
+            console.error('HassBeam Setup: Error calling get_recent_codes:', checkError);
+            if (verificationSubscription && typeof verificationSubscription === 'function') {
+              verificationSubscription();
+            }
+            alert('Fehler beim Überprüfen des Speichervorgangs: ' + (checkError.message || checkError));
+          }
+        }, 500);
+
+        // Timeout als Fallback
+        setTimeout(() => {
+          if (!hasReceived) {
+            console.error('HassBeam Setup: Verification timeout');
+            if (verificationSubscription && typeof verificationSubscription === 'function') {
+              verificationSubscription();
+            }
+            alert('Timeout: Keine Bestätigung für das Speichern erhalten. Bitte prüfen Sie die Home Assistant Logs.');
+          }
+        }, 3000);
+
+      } catch (subscribeError) {
+        console.error('HassBeam Setup: Error setting up verification subscription:', subscribeError);
+        alert('Fehler beim Einrichten der Verifikation: ' + (subscribeError.message || subscribeError));
+      }
+
     } catch (error) {
       // Fehler beim Service-Aufruf (z.B. Netzwerkfehler)
       console.error('HassBeam Setup: Fehler beim Speichern des IR-Codes:', error);
