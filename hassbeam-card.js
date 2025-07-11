@@ -11,7 +11,6 @@ class HassBeamCard extends HTMLElement {
     this.irCodes = [];
     this.currentDevice = '';
     this.currentAction = '';
-    this.currentProtocol = 'Pronto';
     this.currentLimit = 10;
     this._hass = null;
     this._activeSubscription = null;
@@ -29,13 +28,11 @@ class HassBeamCard extends HTMLElement {
     this.irCodes = [];
     this.currentDevice = config.device || '';
     this.currentAction = config.action || '';
-    this.currentProtocol = config.protocol || 'Pronto';
     this.currentLimit = config.limit || 10;
 
     console.log('HassBeam Card: Configuration set', {
       device: this.currentDevice,
       action: this.currentAction,
-      protocol: this.currentProtocol,
       limit: this.currentLimit,
       show_table: config.show_table
     });
@@ -75,8 +72,6 @@ class HassBeamCard extends HTMLElement {
           <input type="text" id="device-filter" placeholder="Enter device name..." value="${this.currentDevice}" />
           <label>Filter by Action:</label>
           <input type="text" id="action-filter" placeholder="Enter action name..." value="${this.currentAction}" />
-          <label>Filter by Protocol:</label>
-          <input type="text" id="protocol-filter" placeholder="Enter protocol..." value="${this.currentProtocol}" />
           <label>Limit:</label>
           <input type="number" id="limit-input" min="1" max="100" value="${this.currentLimit}" />
           <button id="refresh-btn">Refresh</button>
@@ -387,14 +382,6 @@ class HassBeamCard extends HTMLElement {
       });
     }
     
-    // Protocol filter input
-    const protocolFilter = this.querySelector('#protocol-filter');
-    if (protocolFilter) {
-      protocolFilter.addEventListener('input', () => {
-        this.updateFiltersFromUI();
-      });
-    }
-    
     // Event delegation for action buttons
     this.addEventListener('click', (event) => {
       if (event.target.classList.contains('delete-btn')) {
@@ -421,21 +408,17 @@ class HassBeamCard extends HTMLElement {
     const deviceFilter = this.querySelector('#device-filter');
     const limitInput = this.querySelector('#limit-input');
     const actionFilter = this.querySelector('#action-filter');
-    const protocolFilter = this.querySelector('#protocol-filter');
 
     const oldDevice = this.currentDevice;
     const oldLimit = this.currentLimit;
     const oldAction = this.currentAction;
-    const oldProtocol = this.currentProtocol;
     this.currentDevice = deviceFilter?.value || '';
     this.currentAction = actionFilter?.value || '';
-    this.currentProtocol = protocolFilter?.value || '';
     this.currentLimit = limitInput?.value || '10';
 
     console.log('HassBeam Card: Filters updated', {
       device: { old: oldDevice, new: this.currentDevice },
       action: { old: oldAction, new: this.currentAction },
-      protocol: { old: oldProtocol, new: this.currentProtocol },
       limit: { old: oldLimit, new: this.currentLimit }
     });
   }
@@ -544,7 +527,6 @@ class HassBeamCard extends HTMLElement {
   prepareServiceData() {
     console.log('HassBeam Card: prepareServiceData called', {
       currentDevice: this.currentDevice,
-      currentProtocol: this.currentProtocol,
       currentLimit: this.currentLimit
     });
     
@@ -556,10 +538,6 @@ class HassBeamCard extends HTMLElement {
     if (this.currentAction?.trim()) {
       serviceData.action = this.currentAction.trim();
       console.log('HassBeam Card: Action name added to service data', serviceData.action);
-    }
-    if (this.currentProtocol?.trim()) {
-      serviceData.protocol = this.currentProtocol.trim();
-      console.log('HassBeam Card: Protocol added to service data', serviceData.protocol);
     }
 
     console.log('HassBeam Card: Service data prepared', serviceData);
@@ -875,11 +853,13 @@ class HassBeamSetupCard extends HTMLElement {
     this.config = {};
     this.isListening = false;
     this.capturedEvents = [];
+    this.protocolFilter = 'Pronto';
     this._eventSubscription = null;
   }
 
   setConfig(config) {
     this.config = config;
+    this.protocolFilter = config.protocol || 'Pronto';
     this.render();
     this.attachEventListeners();
   }
@@ -899,6 +879,13 @@ class HassBeamSetupCard extends HTMLElement {
           <div class="top-controls">
             <button id="start-listening-btn" class="listening-btn">Start Listening</button>
             <button id="clear-table-btn" class="clear-btn">Clear Table</button>
+          </div>
+          
+          <div class="filter-controls">
+            <div class="filter-group">
+              <label for="protocol-filter">Filter by Protocol:</label>
+              <input type="text" id="protocol-filter" placeholder="Enter protocol..." value="${this.protocolFilter}" />
+            </div>
           </div>
           
           <div class="setup-table-container">
@@ -958,6 +945,30 @@ class HassBeamSetupCard extends HTMLElement {
           display: flex;
           justify-content: space-between;
           align-items: center;
+        }
+        .filter-controls {
+          margin-bottom: 20px;
+          padding: 12px;
+          background: var(--secondary-background-color, #f5f5f5);
+          border-radius: 4px;
+        }
+        .filter-group {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .filter-group label {
+          font-weight: 500;
+          min-width: 140px;
+        }
+        .filter-group input {
+          flex: 1;
+          padding: 8px 12px;
+          border: 1px solid var(--divider-color);
+          border-radius: 4px;
+          background: var(--card-background-color);
+          color: var(--primary-text-color);
+          font-size: 14px;
         }
         .setup-controls {
           margin-top: 20px;
@@ -1118,6 +1129,7 @@ class HassBeamSetupCard extends HTMLElement {
     const clearTableBtn = this.querySelector('#clear-table-btn');
     const deviceInput = this.querySelector('#device-input');
     const actionInput = this.querySelector('#action-input');
+    const protocolFilter = this.querySelector('#protocol-filter');
     
     if (startListeningBtn) {
       startListeningBtn.addEventListener('click', () => {
@@ -1134,6 +1146,13 @@ class HassBeamSetupCard extends HTMLElement {
     if (clearTableBtn) {
       clearTableBtn.addEventListener('click', () => {
         this.clearTable();
+      });
+    }
+    
+    if (protocolFilter) {
+      protocolFilter.addEventListener('input', () => {
+        this.protocolFilter = protocolFilter.value;
+        this.updateTable();
       });
     }
     
@@ -1271,7 +1290,20 @@ class HassBeamSetupCard extends HTMLElement {
       return array.findIndex(e => JSON.stringify(e.rawData) === eventDataStr) === index;
     });
     
-    tableBody.innerHTML = uniqueEvents.map((event, index) => {
+    // Filter by protocol if specified
+    let filteredEvents = uniqueEvents;
+    if (this.protocolFilter && this.protocolFilter.trim()) {
+      filteredEvents = uniqueEvents.filter(event => 
+        event.protocol.toLowerCase().includes(this.protocolFilter.toLowerCase())
+      );
+    }
+    
+    if (filteredEvents.length === 0) {
+      this.updateTableWithStatus(`No IR codes found with protocol "${this.protocolFilter}"`);
+      return;
+    }
+    
+    tableBody.innerHTML = filteredEvents.map((event, index) => {
       const timeString = event.timestamp.toLocaleTimeString('en-US');
       // Remove device_name, device_id, hassbeam_device and protocol from event data for display
       const eventDataCopy = { ...event.rawData };
@@ -1305,9 +1337,9 @@ class HassBeamSetupCard extends HTMLElement {
       button.addEventListener('click', (e) => {
         const index = parseInt(e.target.getAttribute('data-event-index'));
         // Find the original event based on the filtered index
-        const selectedUniqueEvent = uniqueEvents[index];
+        const selectedFilteredEvent = filteredEvents[index];
         const originalIndex = this.capturedEvents.findIndex(event => 
-          JSON.stringify(event.rawData) === JSON.stringify(selectedUniqueEvent.rawData)
+          JSON.stringify(event.rawData) === JSON.stringify(selectedFilteredEvent.rawData)
         );
         this.selectEvent(originalIndex);
       });
@@ -1318,8 +1350,8 @@ class HassBeamSetupCard extends HTMLElement {
     sendButtons.forEach(button => {
       button.addEventListener('click', (e) => {
         const index = parseInt(e.target.getAttribute('data-event-index'));
-        const selectedUniqueEvent = uniqueEvents[index];
-        this.sendIrCodeFromEvent(selectedUniqueEvent.rawData);
+        const selectedFilteredEvent = filteredEvents[index];
+        this.sendIrCodeFromEvent(selectedFilteredEvent.rawData);
       });
     });
   }
