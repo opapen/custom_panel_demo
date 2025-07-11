@@ -105,10 +105,10 @@ class HassBeamCard extends HTMLElement {
           <thead>
             <tr>
               <th>Zeitstempel</th>
+              <th>HassBeam Device</th>
               <th>Gerät</th>
               <th>Aktion</th>
               <th>Protocol</th>
-              <th>HassBeam Device</th>
               <th>Event Data</th>
             </tr>
           </thead>
@@ -525,10 +525,10 @@ class HassBeamCard extends HTMLElement {
     const row = `
       <tr>
         <td class="timestamp">${timestamp}</td>
+        <td class="hassbeam-device">${hassbeamDevice}</td>
         <td class="device">${code.device}</td>
         <td class="action">${code.action}</td>
         <td class="protocol">${protocol}</td>
-        <td class="hassbeam-device">${hassbeamDevice}</td>
         <td class="event-data" title="${formattedEventData}">${formattedEventData}</td>
       </tr>
     `;
@@ -673,6 +673,31 @@ class HassBeamSetupCard extends HTMLElement {
     this.innerHTML = `
       <ha-card header="${this.config.title || 'HassBeam Setup'}">
         <div class="card-content">
+          <div class="top-controls">
+            <button id="start-listening-btn" class="listening-btn large">Start Listening</button>
+          </div>
+          
+          <div class="setup-table-container">
+            <table id="setup-table">
+              <thead>
+                <tr>
+                  <th>Zeit</th>
+                  <th>HassBeam Device</th>
+                  <th>Protocol</th>
+                  <th>Event Data</th>
+                  <th>Aktionen</th>
+                </tr>
+              </thead>
+              <tbody id="setup-table-body">
+                <tr>
+                  <td colspan="5" style="text-align: center; padding: 20px; color: var(--secondary-text-color);">
+                    Klicken Sie auf "Start Listening" um zu beginnen
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          
           <div class="setup-controls">
             <div class="input-group">
               <label for="device-input">Gerät:</label>
@@ -682,32 +707,10 @@ class HassBeamSetupCard extends HTMLElement {
               <label for="action-input">Aktion:</label>
               <input type="text" id="action-input" placeholder="Aktionsname eingeben..." />
             </div>
-            <button id="start-listening-btn" class="listening-btn">Start Listening</button>
-          </div>
-          
-          <div class="setup-table-container">
-            <table id="setup-table">
-              <thead>
-                <tr>
-                  <th>Uhrzeit</th>
-                  <th>Protocol</th>
-                  <th>HassBeam Device</th>
-                  <th>Event Data</th>
-                  <th>Aktionen</th>
-                </tr>
-              </thead>
-              <tbody id="setup-table-body">
-                <tr>
-                  <td colspan="5" style="text-align: center; padding: 20px; color: var(--secondary-text-color);">
-                    Geben Sie Gerät und Aktion ein und klicken Sie auf "Start Listening"
-                  </td>
-                </tr>
-              </tbody>
-            </table>
           </div>
           
           <div class="save-section">
-            <button id="save-code-btn" class="save-btn" style="display: none;">IR-Code speichern</button>
+            <button id="save-code-btn" class="save-btn" disabled>IR-Code speichern</button>
           </div>
         </div>
       </ha-card>
@@ -720,7 +723,12 @@ class HassBeamSetupCard extends HTMLElement {
         .card-content {
           padding: 16px;
         }
+        .top-controls {
+          margin-bottom: 20px;
+          text-align: center;
+        }
         .setup-controls {
+          margin-top: 20px;
           margin-bottom: 20px;
           display: flex;
           flex-direction: column;
@@ -753,8 +761,12 @@ class HassBeamSetupCard extends HTMLElement {
           cursor: pointer;
           font-size: 14px;
           font-weight: 500;
-          align-self: flex-start;
-          margin-right: 8px;
+        }
+        .listening-btn.large {
+          padding: 15px 30px;
+          font-size: 16px;
+          font-weight: 600;
+          min-width: 200px;
         }
         .listening-btn:hover, .save-btn:hover {
           background: var(--primary-color-dark);
@@ -770,6 +782,14 @@ class HassBeamSetupCard extends HTMLElement {
         }
         .save-btn:hover {
           background: var(--success-color-dark);
+        }
+        .save-btn:disabled {
+          background: var(--disabled-color, #cccccc);
+          color: var(--disabled-text-color, #888888);
+          cursor: not-allowed;
+        }
+        .save-btn:disabled:hover {
+          background: var(--disabled-color, #cccccc);
         }
         .save-section {
           margin-top: 16px;
@@ -843,6 +863,8 @@ class HassBeamSetupCard extends HTMLElement {
   attachEventListeners() {
     const startListeningBtn = this.querySelector('#start-listening-btn');
     const saveCodeBtn = this.querySelector('#save-code-btn');
+    const deviceInput = this.querySelector('#device-input');
+    const actionInput = this.querySelector('#action-input');
     
     if (startListeningBtn) {
       startListeningBtn.addEventListener('click', () => {
@@ -855,6 +877,19 @@ class HassBeamSetupCard extends HTMLElement {
         this.saveSelectedCode();
       });
     }
+    
+    // Input-Felder überwachen für Save-Button Status
+    if (deviceInput) {
+      deviceInput.addEventListener('input', () => {
+        this.updateSaveButtonState();
+      });
+    }
+    
+    if (actionInput) {
+      actionInput.addEventListener('input', () => {
+        this.updateSaveButtonState();
+      });
+    }
   }
 
   async toggleListening() {
@@ -864,12 +899,6 @@ class HassBeamSetupCard extends HTMLElement {
     const saveCodeBtn = this.querySelector('#save-code-btn');
     
     if (!this.isListening) {
-      // Validierung der Eingaben
-      if (!deviceInput.value.trim() || !actionInput.value.trim()) {
-        alert('Bitte geben Sie sowohl Gerät als auch Aktion ein.');
-        return;
-      }
-      
       if (!this._hass || !this._hass.connection) {
         alert('Keine Verbindung zu Home Assistant verfügbar.');
         return;
@@ -883,10 +912,7 @@ class HassBeamSetupCard extends HTMLElement {
       // Tabelle leeren und Status anzeigen
       this.updateTableWithStatus('Lausche auf IR-Codes... Drücken Sie eine Taste auf Ihrer Fernbedienung.');
       
-      console.log('HassBeam Setup: Start Listening', {
-        device: deviceInput.value,
-        action: actionInput.value
-      });
+      console.log('HassBeam Setup: Start Listening');
       
       // Event-Subscription starten
       try {
@@ -927,10 +953,8 @@ class HassBeamSetupCard extends HTMLElement {
       this._eventSubscription = null;
     }
     
-    // Save-Button anzeigen wenn Events vorhanden
-    if (this.capturedEvents.length > 0) {
-      saveCodeBtn.style.display = 'block';
-    }
+    // Save-Button aktivieren wenn Events vorhanden
+    this.updateSaveButtonState();
     
     console.log('HassBeam Setup: Stop Listening');
   }
@@ -952,6 +976,25 @@ class HassBeamSetupCard extends HTMLElement {
     
     // Tabelle aktualisieren
     this.updateTable();
+    
+    // Save-Button Status aktualisieren
+    this.updateSaveButtonState();
+  }
+
+  updateSaveButtonState() {
+    const saveCodeBtn = this.querySelector('#save-code-btn');
+    const selectedEvent = this.capturedEvents.find(event => event.selected);
+    const deviceInput = this.querySelector('#device-input');
+    const actionInput = this.querySelector('#action-input');
+    
+    // Button aktivieren wenn Event ausgewählt und Felder ausgefüllt
+    const canSave = selectedEvent && 
+                   deviceInput.value.trim() && 
+                   actionInput.value.trim();
+    
+    if (saveCodeBtn) {
+      saveCodeBtn.disabled = !canSave;
+    }
   }
 
   updateTable() {
@@ -982,8 +1025,8 @@ class HassBeamSetupCard extends HTMLElement {
       return `
         <tr>
           <td>${timeString}</td>
-          <td>${event.protocol}</td>
           <td>${event.hassbeamDevice}</td>
+          <td>${event.protocol}</td>
           <td class="event-data" title="${eventDataStr}">${eventDataStr}</td>
           <td>
             <button class="use-btn ${event.selected ? 'selected' : ''}" data-event-index="${index}">
@@ -1034,11 +1077,8 @@ class HassBeamSetupCard extends HTMLElement {
     // Tabelle aktualisieren
     this.updateTable();
     
-    // Save-Button anzeigen
-    const saveCodeBtn = this.querySelector('#save-code-btn');
-    if (saveCodeBtn) {
-      saveCodeBtn.style.display = 'block';
-    }
+    // Save-Button aktivieren
+    this.updateSaveButtonState();
   }
 
   async saveSelectedCode() {
@@ -1080,11 +1120,8 @@ class HassBeamSetupCard extends HTMLElement {
       this.capturedEvents = [];
       this.updateTableWithStatus('IR-Code gespeichert. Geben Sie eine neue Aktion ein für den nächsten Code.');
       
-      // Save-Button verstecken
-      const saveCodeBtn = this.querySelector('#save-code-btn');
-      if (saveCodeBtn) {
-        saveCodeBtn.style.display = 'none';
-      }
+      // Save-Button deaktivieren
+      this.updateSaveButtonState();
       
     } catch (error) {
       console.error('HassBeam Setup: Fehler beim Speichern des IR-Codes:', error);
