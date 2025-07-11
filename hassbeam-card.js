@@ -11,6 +11,7 @@ class HassBeamCard extends HTMLElement {
     this.irCodes = [];
     this.currentDevice = '';
     this.currentAction = '';
+    this.currentProtocol = 'Pronto';
     this.currentLimit = 10;
     this._hass = null;
     this._activeSubscription = null;
@@ -28,11 +29,13 @@ class HassBeamCard extends HTMLElement {
     this.irCodes = [];
     this.currentDevice = config.device || '';
     this.currentAction = config.action || '';
+    this.currentProtocol = config.protocol || 'Pronto';
     this.currentLimit = config.limit || 10;
 
     console.log('HassBeam Card: Configuration set', {
       device: this.currentDevice,
       action: this.currentAction,
+      protocol: this.currentProtocol,
       limit: this.currentLimit,
       show_table: config.show_table
     });
@@ -72,6 +75,8 @@ class HassBeamCard extends HTMLElement {
           <input type="text" id="device-filter" placeholder="Enter device name..." value="${this.currentDevice}" />
           <label>Filter by Action:</label>
           <input type="text" id="action-filter" placeholder="Enter action name..." value="${this.currentAction}" />
+          <label>Filter by Protocol:</label>
+          <input type="text" id="protocol-filter" placeholder="Enter protocol..." value="${this.currentProtocol}" />
           <label>Limit:</label>
           <input type="number" id="limit-input" min="1" max="100" value="${this.currentLimit}" />
           <button id="refresh-btn">Refresh</button>
@@ -382,6 +387,14 @@ class HassBeamCard extends HTMLElement {
       });
     }
     
+    // Protocol filter input
+    const protocolFilter = this.querySelector('#protocol-filter');
+    if (protocolFilter) {
+      protocolFilter.addEventListener('input', () => {
+        this.updateFiltersFromUI();
+      });
+    }
+    
     // Event delegation for action buttons
     this.addEventListener('click', (event) => {
       if (event.target.classList.contains('delete-btn')) {
@@ -408,17 +421,21 @@ class HassBeamCard extends HTMLElement {
     const deviceFilter = this.querySelector('#device-filter');
     const limitInput = this.querySelector('#limit-input');
     const actionFilter = this.querySelector('#action-filter');
+    const protocolFilter = this.querySelector('#protocol-filter');
 
     const oldDevice = this.currentDevice;
     const oldLimit = this.currentLimit;
     const oldAction = this.currentAction;
+    const oldProtocol = this.currentProtocol;
     this.currentDevice = deviceFilter?.value || '';
     this.currentAction = actionFilter?.value || '';
+    this.currentProtocol = protocolFilter?.value || '';
     this.currentLimit = limitInput?.value || '10';
 
     console.log('HassBeam Card: Filters updated', {
       device: { old: oldDevice, new: this.currentDevice },
       action: { old: oldAction, new: this.currentAction },
+      protocol: { old: oldProtocol, new: this.currentProtocol },
       limit: { old: oldLimit, new: this.currentLimit }
     });
   }
@@ -527,6 +544,7 @@ class HassBeamCard extends HTMLElement {
   prepareServiceData() {
     console.log('HassBeam Card: prepareServiceData called', {
       currentDevice: this.currentDevice,
+      currentProtocol: this.currentProtocol,
       currentLimit: this.currentLimit
     });
     
@@ -538,6 +556,10 @@ class HassBeamCard extends HTMLElement {
     if (this.currentAction?.trim()) {
       serviceData.action = this.currentAction.trim();
       console.log('HassBeam Card: Action name added to service data', serviceData.action);
+    }
+    if (this.currentProtocol?.trim()) {
+      serviceData.protocol = this.currentProtocol.trim();
+      console.log('HassBeam Card: Protocol added to service data', serviceData.protocol);
     }
 
     console.log('HassBeam Card: Service data prepared', serviceData);
