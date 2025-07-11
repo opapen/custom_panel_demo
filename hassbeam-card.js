@@ -1054,6 +1054,22 @@ class HassBeamSetupCard extends HTMLElement {
           background: var(--success-color);
           filter: brightness(0.9);
         }
+        .send-btn-setup {
+          background: #4CAF50;
+          color: white;
+          border: none;
+          border-radius: 2px;
+          padding: 4px 8px;
+          cursor: pointer;
+          font-size: 12px;
+          margin-left: 4px;
+        }
+        .send-btn-setup:hover {
+          background: #45a049;
+        }
+        .send-btn-setup:active {
+          transform: scale(0.95);
+        }
         .event-data {
           font-family: monospace;
           font-size: 12px;
@@ -1253,6 +1269,9 @@ class HassBeamSetupCard extends HTMLElement {
             <button class="use-btn ${event.selected ? 'selected' : ''}" data-event-index="${index}">
               ${event.selected ? 'Selected' : 'Select'}
             </button>
+            <button class="send-btn-setup" data-event-index="${index}" title="Send IR Code">
+              📡
+            </button>
           </td>
         </tr>
       `;
@@ -1269,6 +1288,16 @@ class HassBeamSetupCard extends HTMLElement {
           JSON.stringify(event.rawData) === JSON.stringify(selectedUniqueEvent.rawData)
         );
         this.selectEvent(originalIndex);
+      });
+    });
+    
+    // Add event listeners for send buttons
+    const sendButtons = tableBody.querySelectorAll('.send-btn-setup');
+    sendButtons.forEach(button => {
+      button.addEventListener('click', (e) => {
+        const index = parseInt(e.target.getAttribute('data-event-index'));
+        const selectedUniqueEvent = uniqueEvents[index];
+        this.sendIrCodeFromEvent(selectedUniqueEvent.rawData);
       });
     });
   }
@@ -1355,6 +1384,139 @@ class HassBeamSetupCard extends HTMLElement {
         alert('Error saving IR code: ' + (error.message || error));
       }
     }
+  }
+
+  /**
+   * Send IR code directly from event data
+   * @param {Object} eventData - Raw event data from the captured IR event
+   */
+  async sendIrCodeFromEvent(eventData) {
+    console.log('HassBeam Setup: sendIrCodeFromEvent called', eventData);
+    
+    if (!this._hass) {
+      console.error('HassBeam Setup: No Home Assistant instance available');
+      alert('No connection to Home Assistant available.');
+      return;
+    }
+    
+    try {
+      // Extract protocol from event data
+      const protocol = eventData.protocol;
+      const hassbeamDevice = eventData.hassbeam_device;
+      
+      if (!protocol || !hassbeamDevice) {
+        console.error('HassBeam Setup: Missing protocol or hassbeam_device in event data');
+        alert('Cannot send IR code: Missing protocol or device information');
+        return;
+      }
+      
+      // Prepare service data similar to the main card
+      const serviceData = this.prepareServiceDataFromEvent(eventData);
+      const serviceName = `${hassbeamDevice}_send_ir_${protocol.toLowerCase()}`;
+      
+      console.log('HassBeam Setup: Calling ESPHome service', {
+        service: serviceName,
+        data: serviceData
+      });
+      
+      // Call the ESPHome service directly
+      await this._hass.callService('esphome', serviceName, serviceData);
+      
+      console.log('HassBeam Setup: IR code sent successfully');
+      
+      // Show success message
+      this.showTemporaryMessage(`IR code sent via ${protocol} protocol`, 'success');
+      
+    } catch (error) {
+      console.error('HassBeam Setup: Error sending IR code:', error);
+      this.showTemporaryMessage(`Error sending IR code: ${error.message}`, 'error');
+    }
+  }
+
+  /**
+   * Prepare service data from event data for ESPHome service call
+   * @param {Object} eventData - Raw event data
+   * @returns {Object} Service data for ESPHome call
+   */
+  prepareServiceDataFromEvent(eventData) {
+    const serviceData = {};
+    
+    // Copy relevant fields from event data, excluding internal fields
+    const excludeFields = ['device_name', 'device_id', 'hassbeam_device', 'protocol'];
+    
+    Object.keys(eventData).forEach(key => {
+      if (!excludeFields.includes(key)) {
+        let value = eventData[key];
+        
+        // Convert hex strings to integers for certain fields
+        if (typeof value === 'string' && value.startsWith('0x')) {
+          value = parseInt(value, 16);
+        }
+        // Convert string arrays to actual arrays
+        else if (typeof value === 'string' && value.startsWith('[') && value.endsWith(']')) {
+          try {
+            value = JSON.parse(value);
+          } catch (e) {
+            console.warn('HassBeam Setup: Could not parse array string:', value);
+          }
+        }
+        
+        serviceData[key] = value;
+      }
+    });
+    
+    console.log('HassBeam Setup: Service data prepared from event', serviceData);
+    return serviceData;
+  }
+
+  /**
+   * Show temporary message
+   * @param {string} message - Message to show
+   * @param {string} type - Message type ('success' or 'error')
+   */
+  showTemporaryMessage(message, type = 'info') {
+    // Create or update message element
+    let messageEl = this.querySelector('.temp-message');
+    if (!messageEl) {
+      messageEl = document.createElement('div');
+      messageEl.className = 'temp-message';
+      messageEl.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 10px 20px;
+        border-radius: 4px;
+        font-weight: 500;
+        z-index: 1000;
+        max-width: 300px;
+        word-wrap: break-word;
+      `;
+      this.appendChild(messageEl);
+    }
+    
+    messageEl.textContent = message;
+    messageEl.className = `temp-message ${type}`;
+    
+    // Set colors based on type
+    if (type === 'success') {
+      messageEl.style.background = '#4CAF50';
+      messageEl.style.color = 'white';
+    } else if (type === 'error') {
+      messageEl.style.background = '#f44336';
+      messageEl.style.color = 'white';
+    } else {
+      messageEl.style.background = '#2196F3';
+      messageEl.style.color = 'white';
+    }
+    
+    messageEl.style.display = 'block';
+    
+    // Hide after 3 seconds
+    setTimeout(() => {
+      if (messageEl) {
+        messageEl.style.display = 'none';
+      }
+    }, 3000);
   }
 
   /**
