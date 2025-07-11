@@ -45,16 +45,15 @@ class HassBeamCard extends HTMLElement {
     const showTable = this.config.show_table !== false;
     const cardHeight = this.config.height || 'auto';
     const cardWidth = this.config.width || 'auto';
-    const tableHeight = this.config.table_height || '400px';
 
-    this.innerHTML = this.generateCardHTML(showTable, cardHeight, cardWidth, tableHeight);
+    this.innerHTML = this.generateCardHTML(showTable, cardHeight, cardWidth);
   }
 
-  generateCardHTML(showTable, cardHeight, cardWidth, tableHeight) {
+  generateCardHTML(showTable, cardHeight, cardWidth) {
     return `
       <ha-card header="${this.config.title || 'HassBeam Card'}" style="height: ${cardHeight}; width: ${cardWidth};">
         <div class="card-content">
-          ${showTable ? this.generateTableHTML(tableHeight) : ''}
+          ${showTable ? this.generateTableHTML() : ''}
         </div>
       </ha-card>
       ${this.generateCSS(cardWidth, cardHeight)}
@@ -63,10 +62,9 @@ class HassBeamCard extends HTMLElement {
 
   /**
    * Generate the HTML for the table and its controls
-   * @param {string} tableHeight - Height of the table
    * @returns {string} HTML string
    */
-  generateTableHTML(tableHeight) {
+  generateTableHTML() {
     return `
       <div class="table-controls">
         <div class="filter-section">
@@ -80,16 +78,16 @@ class HassBeamCard extends HTMLElement {
         </div>
       </div>
       
-      <div class="table-container" style="max-height: ${tableHeight};">
+      <div class="table-container">
         <table id="ir-codes-table">
           <colgroup>
-            <col style="width: 10%; min-width: 150px;">
-            <col style="width: 5%; min-width: 100px;">
-            <col style="width: 5%; min-width: 100px;">
-            <col style="width: 5%; min-width: 100px;">
-            <col style="width: 5%; min-width: 100px;">
-            <col style="width: 65%;min-width: 450px;">
-            <col style="width: 5%; min-width: 50px;">
+            <col style="width: 15%; min-width: 150px;">
+            <col style="width: 12%; min-width: 100px;">
+            <col style="width: 12%; min-width: 100px;">
+            <col style="width: 12%; min-width: 100px;">
+            <col style="width: 10%; min-width: 100px;">
+            <col style="width: 31%; min-width: 300px;">
+            <col style="width: 8%; min-width: 80px;">
           </colgroup>
           <thead>
             <tr>
@@ -130,6 +128,9 @@ class HassBeamCard extends HTMLElement {
         
         .card-content {
           padding: 16px;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
         }
         
         .table-controls {
@@ -182,6 +183,8 @@ class HassBeamCard extends HTMLElement {
           border: 1px solid var(--divider-color);
           border-radius: 4px;
           width: 100%;
+          flex-grow: 1;
+          min-height: 400px;
         }
         
         #ir-codes-table {
@@ -190,8 +193,6 @@ class HassBeamCard extends HTMLElement {
           font-size: 14px;
           table-layout: fixed !important;
         }
-        
-        
         
         #ir-codes-table th,
         #ir-codes-table td {
@@ -274,6 +275,30 @@ class HassBeamCard extends HTMLElement {
           padding: 4px;
         }
         
+        .send-btn {
+          background: #4CAF50;
+          color: white;
+          border: none;
+          border-radius: 50%;
+          width: 24px;
+          height: 24px;
+          cursor: pointer;
+          font-size: 12px;
+          margin-right: 4px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          transition: background-color 0.2s;
+        }
+        
+        .send-btn:hover {
+          background: #45a049;
+        }
+        
+        .send-btn:active {
+          transform: scale(0.95);
+        }
+        
         .delete-btn {
           background: #ff4444;
           color: white;
@@ -298,6 +323,34 @@ class HassBeamCard extends HTMLElement {
         .delete-btn:active {
           transform: scale(0.95);
         }
+        
+        .temp-message {
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          padding: 10px 20px;
+          border-radius: 4px;
+          font-weight: 500;
+          z-index: 1000;
+          display: none;
+          max-width: 300px;
+          word-wrap: break-word;
+        }
+        
+        .temp-message.success {
+          background: #4CAF50;
+          color: white;
+        }
+        
+        .temp-message.error {
+          background: #f44336;
+          color: white;
+        }
+        
+        .temp-message.info {
+          background: #2196F3;
+          color: white;
+        }
       </style>
     `;
   }
@@ -308,6 +361,7 @@ class HassBeamCard extends HTMLElement {
   attachEventListeners() {
     console.log('HassBeam Card: attachEventListeners called');
     
+    // Refresh button
     const refreshBtn = this.querySelector('#refresh-btn');
     if (refreshBtn) {
       console.log('HassBeam Card: Refresh button event listener added');
@@ -320,22 +374,29 @@ class HassBeamCard extends HTMLElement {
       console.warn('HassBeam Card: Refresh button not found');
     }
     
-    // Event delegation for delete buttons
-    this.addEventListener('click', (event) => {
-      if (event.target.classList.contains('delete-btn')) {
-        const codeId = event.target.getAttribute('data-code-id');
-        if (codeId) {
-          this.deleteCode(parseInt(codeId));
-        }
-      }
-    });
-    
+    // Action filter input
     const actionFilter = this.querySelector('#action-filter');
     if (actionFilter) {
       actionFilter.addEventListener('input', () => {
         this.updateFiltersFromUI();
       });
     }
+    
+    // Event delegation for action buttons
+    this.addEventListener('click', (event) => {
+      if (event.target.classList.contains('delete-btn')) {
+        const codeId = event.target.getAttribute('data-code-id');
+        if (codeId) {
+          this.deleteCode(parseInt(codeId));
+        }
+      } else if (event.target.classList.contains('send-btn')) {
+        const device = event.target.getAttribute('data-device');
+        const action = event.target.getAttribute('data-action');
+        if (device && action) {
+          this.sendIrCode(device, action);
+        }
+      }
+    });
   }
 
   /**
@@ -530,18 +591,11 @@ class HassBeamCard extends HTMLElement {
       return;
     }
 
-    // Update code count (if element exists)
-    const codeCountEl = this.querySelector('#code-count');
-    if (codeCountEl) {
-      codeCountEl.innerText = this.irCodes.length;
-      console.log('HassBeam Card: Code count updated', this.irCodes.length);
-    }
-
     if (this.irCodes.length === 0) {
       console.log('HassBeam Card: No IR codes available, showing empty table');
       tableBody.innerHTML = `
         <tr>
-          <td colspan="6" style="text-align: center; padding: 20px;">
+          <td colspan="7" style="text-align: center; padding: 20px;">
             No IR codes found
           </td>
         </tr>
@@ -574,6 +628,9 @@ class HassBeamCard extends HTMLElement {
         <td class="protocol">${protocol}</td>
         <td class="event-data" title="${formattedEventData}">${formattedEventData}</td>
         <td class="actions">
+          <button class="send-btn" data-device="${code.device}" data-action="${code.action}" title="Send IR Code">
+            📡
+          </button>
           <button class="delete-btn" data-code-id="${code.id}" title="Delete">
             ×
           </button>
@@ -677,6 +734,63 @@ class HassBeamCard extends HTMLElement {
   }
 
   /**
+   * Send IR code
+   * @param {string} device - Device name
+   * @param {string} action - Action name
+   */
+  async sendIrCode(device, action) {
+    console.log('HassBeam Card: sendIrCode called', { device, action });
+    
+    if (!this._hass) {
+      console.error('HassBeam Card: No Home Assistant instance available');
+      return;
+    }
+    
+    try {
+      // Call the send_ir_code service
+      const result = await this._hass.callService('hassbeam_connect', 'send_ir_code', {
+        device: device,
+        action: action
+      });
+      
+      console.log('HassBeam Card: IR code sent successfully', result);
+      
+      // Show success message
+      this.showTemporaryMessage(`IR code sent: ${device}.${action}`, 'success');
+      
+    } catch (error) {
+      console.error('HassBeam Card: Error sending IR code:', error);
+      this.showTemporaryMessage(`Error sending IR code: ${error.message}`, 'error');
+    }
+  }
+
+  /**
+   * Show temporary message
+   * @param {string} message - Message to show
+   * @param {string} type - Message type ('success' or 'error')
+   */
+  showTemporaryMessage(message, type = 'info') {
+    // Create or update message element
+    let messageEl = this.querySelector('.temp-message');
+    if (!messageEl) {
+      messageEl = document.createElement('div');
+      messageEl.className = 'temp-message';
+      this.querySelector('.card-content').appendChild(messageEl);
+    }
+    
+    messageEl.textContent = message;
+    messageEl.className = `temp-message ${type}`;
+    messageEl.style.display = 'block';
+    
+    // Hide after 3 seconds
+    setTimeout(() => {
+      if (messageEl) {
+        messageEl.style.display = 'none';
+      }
+    }, 3000);
+  }
+
+  /**
    * Delete IR code
    * @param {number} codeId - ID of the code to delete
    */
@@ -754,6 +868,9 @@ class HassBeamSetupCard extends HTMLElement {
   }
 
   render() {
+    const cardWidth = this.config.width || 'auto';
+    const cardHeight = this.config.height || 'auto';
+    
     this.innerHTML = `
       <ha-card header="${this.config.title || 'HassBeam Setup'}">
         <div class="card-content">
@@ -799,6 +916,12 @@ class HassBeamSetupCard extends HTMLElement {
           </div>
         </div>
       </ha-card>
+      ${this.generateSetupCSS(cardWidth, cardHeight)}
+    `;
+  }
+
+  generateSetupCSS(cardWidth, cardHeight) {
+    return `
       <style>
         ha-card {
           width: ${this.config.width || 'auto'};
