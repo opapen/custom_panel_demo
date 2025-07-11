@@ -2,7 +2,6 @@
   "name": "HassBeam Cards",
   "hacs": "1.6.0",
   "render_readme": true,
-  "content_in_root": true,
   "domains": ["sensor", "switch", "light"],
   "filename": ["hassbeam-card.js", "hassbeam-setup-card.js"]
 }
