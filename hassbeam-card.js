@@ -666,7 +666,6 @@ class HassBeamSetupCard extends HTMLElement {
               <input type="text" id="action-input" placeholder="Aktionsname eingeben..." />
             </div>
             <button id="start-listening-btn" class="listening-btn">Start Listening</button>
-            <button id="save-code-btn" class="save-btn" style="display: none;">IR-Code speichern</button>
           </div>
           
           <div class="setup-table-container">
@@ -687,6 +686,10 @@ class HassBeamSetupCard extends HTMLElement {
                 </tr>
               </tbody>
             </table>
+          </div>
+          
+          <div class="save-section">
+            <button id="save-code-btn" class="save-btn" style="display: none;">IR-Code speichern</button>
           </div>
         </div>
       </ha-card>
@@ -749,6 +752,10 @@ class HassBeamSetupCard extends HTMLElement {
         }
         .save-btn:hover {
           background: var(--success-color-dark);
+        }
+        .save-section {
+          margin-top: 16px;
+          text-align: center;
         }
         .setup-table-container {
           border: 1px solid var(--divider-color);
@@ -1000,13 +1007,19 @@ class HassBeamSetupCard extends HTMLElement {
       return;
     }
     
+    const device = deviceInput.value.trim();
+    const action = actionInput.value.trim();
+    
+    // Validierung der Eingaben
+    if (!device || !action) {
+      alert('Bitte geben Sie sowohl Gerät als auch Aktion ein.');
+      return;
+    }
+    
     if (!this._hass) {
       alert('Keine Verbindung zu Home Assistant verfügbar.');
       return;
     }
-    
-    const device = deviceInput.value.trim();
-    const action = actionInput.value.trim();
     
     try {
       // Service zum Speichern des IR-Codes aufrufen
@@ -1018,11 +1031,10 @@ class HassBeamSetupCard extends HTMLElement {
       
       alert(`IR-Code erfolgreich gespeichert!\nGerät: ${device}\nAktion: ${action}`);
       
-      // Felder leeren und Events zurücksetzen
-      deviceInput.value = '';
+      // Nur Aktion-Feld leeren, Gerät bleibt gefüllt, Events zurücksetzen
       actionInput.value = '';
       this.capturedEvents = [];
-      this.updateTableWithStatus('IR-Code gespeichert. Geben Sie neue Daten ein für den nächsten Code.');
+      this.updateTableWithStatus('IR-Code gespeichert. Geben Sie eine neue Aktion ein für den nächsten Code.');
       
       // Save-Button verstecken
       const saveCodeBtn = this.querySelector('#save-code-btn');
