@@ -331,6 +331,16 @@ class HassBeamCard extends HTMLElement {
     } else {
       console.warn('HassBeam Card: Refresh-Button nicht gefunden');
     }
+    
+    // Event delegation for delete buttons
+    this.addEventListener('click', (event) => {
+      if (event.target.classList.contains('delete-btn')) {
+        const codeId = event.target.getAttribute('data-code-id');
+        if (codeId) {
+          this.deleteCode(parseInt(codeId));
+        }
+      }
+    });
   }
 
   /**
@@ -563,7 +573,7 @@ class HassBeamCard extends HTMLElement {
         <td class="protocol">${protocol}</td>
         <td class="event-data" title="${formattedEventData}">${formattedEventData}</td>
         <td class="actions">
-          <button class="delete-btn" onclick="this.getRootNode().host.deleteCode(${code.id})" title="Löschen">
+          <button class="delete-btn" data-code-id="${code.id}" title="Löschen">
             ×
           </button>
         </td>
