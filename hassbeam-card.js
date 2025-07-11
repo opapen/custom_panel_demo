@@ -2,16 +2,7 @@ console.info("HassBeam Card v2.0.0 loaded");
 
 /**
  * HassBeam Card - Custom Lovelace Card for Home Assistant
- * 
- * This card displays IR code events from HassBeam devices in a configurable table format.
- * It provides real-time updates and allows users to filter and manage their captured IR codes.
- * 
- * Features:
- * - Display captured IR codes in a sortable table
- * - Filter by device and action names
- * - Real-time updates via Home Assistant events
- * - Configurable table size and appearance
- * - Delete functionality for unwanted codes
+ * Displays IR code events from HassBeam devices in a configurable table format.
  */
 class HassBeamCard extends HTMLElement {
   constructor() {
@@ -22,14 +13,10 @@ class HassBeamCard extends HTMLElement {
     this.currentAction = '';
     this.currentLimit = 10;
     this._hass = null;
-    this._activeSubscription = null; // Track active event subscription
-    this._subscriptionTimeout = null; // Track subscription timeout
+    this._activeSubscription = null;
+    this._subscriptionTimeout = null;
   }
 
-  /**
-   * Set the configuration for this card instance
-   * @param {Object} config - Configuration object from YAML
-   */
   setConfig(config) {
     console.log('HassBeam Card: setConfig called', config);
     
@@ -39,8 +26,6 @@ class HassBeamCard extends HTMLElement {
 
     this.config = config;
     this.irCodes = [];
-
-    // Initialize current values for filters and limit
     this.currentDevice = config.device || '';
     this.currentAction = config.action || '';
     this.currentLimit = config.limit || 10;
@@ -56,9 +41,6 @@ class HassBeamCard extends HTMLElement {
     this.attachEventListeners();
   }
 
-  /**
-   * Create the HTML structure for the card
-   */
   createCard() {
     const showTable = this.config.show_table !== false;
     const cardHeight = this.config.height || 'auto';
@@ -68,14 +50,6 @@ class HassBeamCard extends HTMLElement {
     this.innerHTML = this.generateCardHTML(showTable, cardHeight, cardWidth, tableHeight);
   }
 
-  /**
-   * Generate the HTML structure for the card
-   * @param {boolean} showTable - Whether to display the table
-   * @param {string} cardHeight - Height of the card
-   * @param {string} cardWidth - Width of the card
-   * @param {string} tableHeight - Height of the table
-   * @returns {string} HTML string
-   */
   generateCardHTML(showTable, cardHeight, cardWidth, tableHeight) {
     return `
       <ha-card header="${this.config.title || 'HassBeam Card'}" style="height: ${cardHeight}; width: ${cardWidth};">
