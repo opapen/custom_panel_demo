@@ -1202,32 +1202,86 @@ class HassBeamSetupCard extends HTMLElement {
     }
     
     try {
+      // Event-Listener für das Speichern-Event hinzufügen
+      let eventReceived = false;
+      
+      const eventListener = (event) => {
+        if (event.event_type === 'hassbeam_connect_code_saved' && 
+            event.data.device === device && 
+            event.data.action === action) {
+          
+          eventReceived = true;
+          this._hass.connection.removeEventListener('event', eventListener);
+          
+          if (event.data.success) {
+            alert(`IR-Code erfolgreich gespeichert!\nGerät: ${device}\nAktion: ${action}`);
+            
+            // Nur Aktion-Feld leeren, Gerät bleibt gefüllt, Events zurücksetzen
+            actionInput.value = '';
+            this.capturedEvents = [];
+            this.updateTableWithStatus('IR-Code gespeichert. Geben Sie eine neue Aktion ein für den nächsten Code.');
+            
+            // Save-Button deaktivieren
+            this.updateSaveButtonState();
+          } else {
+            // Fehlerbehandlung basierend auf dem Event
+            if (event.data.error && event.data.error.includes('already exists')) {
+              alert(`Fehler: Ein IR-Code für "${device}.${action}" existiert bereits!\n\nBitte löschen Sie zuerst den vorhandenen Eintrag in der HassBeam Card oder verwenden Sie einen anderen Geräte-/Aktionsname.`);
+            } else {
+              alert('Fehler beim Speichern des IR-Codes: ' + (event.data.error || 'Unbekannter Fehler'));
+            }
+          }
+        }
+      };
+      
+      // Event-Listener registrieren
+      this._hass.connection.addEventListener('event', eventListener);
+      
+      // Timeout für den Fall, dass kein Event empfangen wird
+      setTimeout(() => {
+        if (!eventReceived) {
+          this._hass.connection.removeEventListener('event', eventListener);
+          // Fallback: Prüfung über Service-Antwort
+          alert('Timeout: Keine Bestätigung vom Server erhalten. Bitte prüfen Sie die Logs.');
+        }
+      }, 5000); // 5 Sekunden Timeout
+      
       // Service zum Speichern des IR-Codes aufrufen
-      await this._hass.callService('hassbeam_connect', 'save_ir_code', {
+      const result = await this._hass.callService('hassbeam_connect', 'save_ir_code', {
         device: device,
         action: action,
         event_data: JSON.stringify(selectedEvent.rawData)
       });
       
-      alert(`IR-Code erfolgreich gespeichert!\nGerät: ${device}\nAktion: ${action}`);
-      
-      // Nur Aktion-Feld leeren, Gerät bleibt gefüllt, Events zurücksetzen
-      actionInput.value = '';
-      this.capturedEvents = [];
-      this.updateTableWithStatus('IR-Code gespeichert. Geben Sie eine neue Aktion ein für den nächsten Code.');
-      
-      // Save-Button deaktivieren
-      this.updateSaveButtonState();
+      // Fallback für den Fall, dass das Event-System nicht funktioniert
+      if (!eventReceived) {
+        setTimeout(() => {
+          if (!eventReceived) {
+            // Verwende die Service-Antwort als Fallback
+            if (result && result.success === false) {
+              if (result.error && result.error.includes('already exists')) {
+                alert(`Fehler: Ein IR-Code für "${device}.${action}" existiert bereits!\n\nBitte löschen Sie zuerst den vorhandenen Eintrag in der HassBeam Card oder verwenden Sie einen anderen Geräte-/Aktionsname.`);
+              } else {
+                alert('Fehler beim Speichern des IR-Codes: ' + (result.error || 'Unbekannter Fehler'));
+              }
+            } else {
+              alert(`IR-Code erfolgreich gespeichert!\nGerät: ${device}\nAktion: ${action}`);
+              
+              // Nur Aktion-Feld leeren, Gerät bleibt gefüllt, Events zurücksetzen
+              actionInput.value = '';
+              this.capturedEvents = [];
+              this.updateTableWithStatus('IR-Code gespeichert. Geben Sie eine neue Aktion ein für den nächsten Code.');
+              
+              // Save-Button deaktivieren
+              this.updateSaveButtonState();
+            }
+          }
+        }, 1000); // 1 Sekunde warten auf Event
+      }
       
     } catch (error) {
       console.error('HassBeam Setup: Fehler beim Speichern des IR-Codes:', error);
-      
-      // Spezielle Behandlung für Duplikat-Fehler
-      if (error.message && error.message.includes('already exists')) {
-        alert(`Fehler: Ein IR-Code für "${device}.${action}" existiert bereits!\n\nBitte löschen Sie zuerst den vorhandenen Eintrag in der HassBeam Card oder verwenden Sie einen anderen Geräte-/Aktionsname.`);
-      } else {
-        alert('Fehler beim Speichern des IR-Codes: ' + error.message);
-      }
+      alert('Fehler beim Speichern des IR-Codes: ' + error.message);
     }
   }
 
