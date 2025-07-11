@@ -78,26 +78,16 @@ class HassBeamCard extends HTMLElement {
         </div>
       </div>
       
-      <div class="table-container">
-        <table id="ir-codes-table">
-          <colgroup>
-            <col style="width: 15%; min-width: 150px;">
-            <col style="width: 12%; min-width: 100px;">
-            <col style="width: 12%; min-width: 100px;">
-            <col style="width: 12%; min-width: 100px;">
-            <col style="width: 10%; min-width: 100px;">
-            <col style="width: 31%; min-width: 300px;">
-            <col style="width: 8%; min-width: 80px;">
-          </colgroup>
+      <div class="table-container">          <table id="ir-codes-table">
           <thead>
             <tr>
-              <th>Timestamp</th>
+              <th>Actions</th>
               <th>HassBeam Device</th>
               <th>Device</th>
               <th>Action</th>
               <th>Protocol</th>
+              <th>Date</th>
               <th>Event Data</th>
-              <th>Actions</th>
             </tr>
           </thead>
           <tbody id="table-body">
@@ -219,6 +209,11 @@ class HassBeamCard extends HTMLElement {
           background: var(--table-row-hover-color, var(--secondary-background-color));
         }
         
+        .actions {
+          text-align: center;
+          padding: 4px;
+        }
+        
         .timestamp {
           font-family: monospace;
           font-size: 12px;
@@ -270,18 +265,12 @@ class HassBeamCard extends HTMLElement {
           word-break: break-all;
         }
         
-        .actions {
-          text-align: center;
-          padding: 4px;
-        }
-        
         .send-btn {
           background: #4CAF50;
           color: white;
           border: none;
-          border-radius: 50%;
-          width: 24px;
-          height: 24px;
+          border-radius: 4px;
+          padding: 4px 8px;
           cursor: pointer;
           font-size: 12px;
           margin-right: 4px;
@@ -303,13 +292,10 @@ class HassBeamCard extends HTMLElement {
           background: #ff4444;
           color: white;
           border: none;
-          border-radius: 50%;
-          width: 24px;
-          height: 24px;
+          border-radius: 4px;
+          padding: 4px 8px;
           cursor: pointer;
-          font-size: 16px;
-          font-weight: bold;
-          line-height: 1;
+          font-size: 12px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
@@ -621,20 +607,20 @@ class HassBeamCard extends HTMLElement {
 
     const row = `
       <tr>
-        <td class="timestamp">${timestamp}</td>
+        <td class="actions">
+          <button class="send-btn" data-device="${code.device}" data-action="${code.action}" title="Send IR Code">
+            Send
+          </button>
+          <button class="delete-btn" data-code-id="${code.id}" title="Delete">
+            Delete
+          </button>
+        </td>
         <td class="hassbeam-device">${hassbeamDevice}</td>
         <td class="device">${code.device}</td>
         <td class="action">${code.action}</td>
         <td class="protocol">${protocol}</td>
+        <td class="timestamp">${timestamp}</td>
         <td class="event-data" title="${formattedEventData}">${formattedEventData}</td>
-        <td class="actions">
-          <button class="send-btn" data-device="${code.device}" data-action="${code.action}" title="Send IR Code">
-            📡
-          </button>
-          <button class="delete-btn" data-code-id="${code.id}" title="Delete">
-            ×
-          </button>
-        </td>
       </tr>
     `;
     
@@ -892,11 +878,11 @@ class HassBeamSetupCard extends HTMLElement {
             <table id="setup-table">
               <thead>
                 <tr>
-                  <th>Time</th>
+                  <th>Actions</th>
                   <th>HassBeam Device</th>
                   <th>Protocol</th>
+                  <th>Time</th>
                   <th>Event Data</th>
-                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody id="setup-table-body">
@@ -1315,18 +1301,18 @@ class HassBeamSetupCard extends HTMLElement {
       
       return `
         <tr>
-          <td>${timeString}</td>
-          <td>${event.hassbeamDevice}</td>
-          <td>${event.protocol}</td>
-          <td class="event-data" title="${eventDataStr}">${eventDataStr}</td>
           <td>
             <button class="use-btn ${event.selected ? 'selected' : ''}" data-event-index="${index}">
               ${event.selected ? 'Selected' : 'Select'}
             </button>
             <button class="send-btn-setup" data-event-index="${index}" title="Send IR Code">
-              📡
+              Send
             </button>
           </td>
+          <td>${event.hassbeamDevice}</td>
+          <td>${event.protocol}</td>
+          <td>${timeString}</td>
+          <td class="event-data" title="${eventDataStr}">${eventDataStr}</td>
         </tr>
       `;
     }).join('');
