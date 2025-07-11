@@ -99,7 +99,8 @@ class HassBeamCard extends HTMLElement {
             <col style="width: 5%; min-width: 100px;">
             <col style="width: 5%; min-width: 100px;">
             <col style="width: 5%; min-width: 100px;">
-            <col style="width: 75%;min-width: 630px;">
+            <col style="width: 5%; min-width: 100px;">
+            <col style="width: 70%;min-width: 530px;">
           </colgroup>
           <thead>
             <tr>
@@ -107,12 +108,13 @@ class HassBeamCard extends HTMLElement {
               <th>Gerät</th>
               <th>Aktion</th>
               <th>Protocol</th>
+              <th>HassBeam Device</th>
               <th>Event Data</th>
             </tr>
           </thead>
           <tbody id="table-body">
             <tr>
-              <td colspan="5" style="text-align: center; padding: 20px; color: var(--secondary-text-color);">
+              <td colspan="6" style="text-align: center; padding: 20px; color: var(--secondary-text-color);">
                 Klicke auf "Aktualisieren" um IR-Codes zu laden
               </td>
             </tr>
@@ -246,6 +248,14 @@ class HassBeamCard extends HTMLElement {
         }
         
         .protocol {
+          font-weight: 500;
+          color: var(--secondary-text-color);
+          font-size: 12px;
+          user-select: text;
+          cursor: text;
+        }
+        
+        .hassbeam-device {
           font-weight: 500;
           color: var(--secondary-text-color);
           font-size: 12px;
@@ -488,7 +498,7 @@ class HassBeamCard extends HTMLElement {
       console.log('HassBeam Card: Keine IR-Codes vorhanden, zeige leere Tabelle');
       tableBody.innerHTML = `
         <tr>
-          <td colspan="5" style="text-align: center; padding: 20px;">
+          <td colspan="6" style="text-align: center; padding: 20px;">
             Keine IR-Codes gefunden
           </td>
         </tr>
@@ -510,7 +520,7 @@ class HassBeamCard extends HTMLElement {
     console.log('HassBeam Card: createTableRow aufgerufen', code);
     
     const timestamp = new Date(code.created_at).toLocaleString('de-DE');
-    const { protocol, formattedEventData } = this.parseEventData(code.event_data);
+    const { protocol, formattedEventData, hassbeamDevice } = this.parseEventData(code.event_data);
 
     const row = `
       <tr>
@@ -518,6 +528,7 @@ class HassBeamCard extends HTMLElement {
         <td class="device">${code.device}</td>
         <td class="action">${code.action}</td>
         <td class="protocol">${protocol}</td>
+        <td class="hassbeam-device">${hassbeamDevice}</td>
         <td class="event-data" title="${formattedEventData}">${formattedEventData}</td>
       </tr>
     `;
@@ -525,7 +536,8 @@ class HassBeamCard extends HTMLElement {
     console.log('HassBeam Card: Tabellenzeile erstellt', {
       device: code.device,
       action: code.action,
-      protocol: protocol
+      protocol: protocol,
+      hassbeamDevice: hassbeamDevice
     });
     
     return row;
@@ -542,27 +554,30 @@ class HassBeamCard extends HTMLElement {
     try {
       const parsed = JSON.parse(eventData);
       const protocol = parsed.protocol || 'N/A';
+      const hassbeamDevice = parsed.hassbeam_device || 'N/A';
       
       console.log('HassBeam Card: Event-Daten erfolgreich geparst', {
         protocol: protocol,
+        hassbeamDevice: hassbeamDevice,
         originalData: parsed
       });
       
-      // Device-Name aus der Anzeige ausblenden
+      // Device-Name, device_id, hassbeam_device und protocol aus der Anzeige ausblenden
       const filteredData = Object.entries(parsed)
-        .filter(([key]) => key !== 'device_name')
+        .filter(([key]) => !['device_name', 'device_id', 'hassbeam_device', 'protocol'].includes(key))
         .map(([key, value]) => `${key}: ${value}`)
         .join(', ');
       
-      console.log('HassBeam Card: Event-Daten formatiert (ohne device_name)', {
+      console.log('HassBeam Card: Event-Daten formatiert (ohne device_name, device_id, hassbeam_device, protocol)', {
         protocol: protocol,
+        hassbeamDevice: hassbeamDevice,
         formattedEventData: filteredData
       });
       
-      return { protocol, formattedEventData: filteredData };
+      return { protocol, formattedEventData: filteredData, hassbeamDevice };
     } catch (e) {
       console.error('HassBeam Card: Fehler beim Parsen der Event-Daten:', e, eventData);
-      return { protocol: 'N/A', formattedEventData: eventData };
+      return { protocol: 'N/A', formattedEventData: eventData, hassbeamDevice: 'N/A' };
     }
   }
 
@@ -590,7 +605,7 @@ class HassBeamCard extends HTMLElement {
     if (tableBody) {
       tableBody.innerHTML = `
         <tr>
-          <td colspan="5" style="text-align: center; padding: 20px; color: var(--error-color);">
+          <td colspan="6" style="text-align: center; padding: 20px; color: var(--error-color);">
             ${message}
           </td>
         </tr>
@@ -676,13 +691,14 @@ class HassBeamSetupCard extends HTMLElement {
                 <tr>
                   <th>Uhrzeit</th>
                   <th>Protocol</th>
+                  <th>HassBeam Device</th>
                   <th>Event Data</th>
                   <th>Aktionen</th>
                 </tr>
               </thead>
               <tbody id="setup-table-body">
                 <tr>
-                  <td colspan="4" style="text-align: center; padding: 20px; color: var(--secondary-text-color);">
+                  <td colspan="5" style="text-align: center; padding: 20px; color: var(--secondary-text-color);">
                     Geben Sie Gerät und Aktion ein und klicken Sie auf "Start Listening"
                   </td>
                 </tr>
@@ -926,6 +942,7 @@ class HassBeamSetupCard extends HTMLElement {
     const eventData = {
       timestamp: new Date(),
       protocol: event.data?.protocol || 'Unknown',
+      hassbeamDevice: event.data?.hassbeam_device || 'Unknown',
       code: event.data?.code || event.data?.data || 'N/A',
       rawData: event.data,
       selected: false
@@ -954,15 +971,19 @@ class HassBeamSetupCard extends HTMLElement {
     
     tableBody.innerHTML = uniqueEvents.map((event, index) => {
       const timeString = event.timestamp.toLocaleTimeString('de-DE');
-      // Device-Name aus Event-Daten entfernen für die Anzeige
+      // Device-Name, device_id, hassbeam_device und protocol aus Event-Daten entfernen für die Anzeige
       const eventDataCopy = { ...event.rawData };
       delete eventDataCopy.device_name;
+      delete eventDataCopy.device_id;
+      delete eventDataCopy.hassbeam_device;
+      delete eventDataCopy.protocol;
       const eventDataStr = JSON.stringify(eventDataCopy);
       
       return `
         <tr>
           <td>${timeString}</td>
           <td>${event.protocol}</td>
+          <td>${event.hassbeamDevice}</td>
           <td class="event-data" title="${eventDataStr}">${eventDataStr}</td>
           <td>
             <button class="use-btn ${event.selected ? 'selected' : ''}" data-event-index="${index}">
@@ -994,7 +1015,7 @@ class HassBeamSetupCard extends HTMLElement {
     
     tableBody.innerHTML = `
       <tr>
-        <td colspan="4" style="text-align: center; padding: 20px; color: var(--secondary-text-color);">
+        <td colspan="5" style="text-align: center; padding: 20px; color: var(--secondary-text-color);">
           ${message}
         </td>
       </tr>
