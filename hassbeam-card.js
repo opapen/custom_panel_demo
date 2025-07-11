@@ -673,16 +673,15 @@ class HassBeamSetupCard extends HTMLElement {
             <table id="setup-table">
               <thead>
                 <tr>
-                  <th>Zeitstempel</th>
+                  <th>Uhrzeit</th>
                   <th>Protocol</th>
-                  <th>Code</th>
                   <th>Event Data</th>
                   <th>Aktionen</th>
                 </tr>
               </thead>
               <tbody id="setup-table-body">
                 <tr>
-                  <td colspan="5" style="text-align: center; padding: 20px; color: var(--secondary-text-color);">
+                  <td colspan="4" style="text-align: center; padding: 20px; color: var(--secondary-text-color);">
                     Geben Sie Gerät und Aktion ein und klicken Sie auf "Start Listening"
                   </td>
                 </tr>
@@ -932,23 +931,31 @@ class HassBeamSetupCard extends HTMLElement {
     }
     
     tableBody.innerHTML = this.capturedEvents.map((event, index) => {
-      const timestamp = event.timestamp.toLocaleString('de-DE');
+      const timeString = event.timestamp.toLocaleTimeString('de-DE');
       const eventDataStr = JSON.stringify(event.rawData);
       
       return `
         <tr>
-          <td>${timestamp}</td>
+          <td>${timeString}</td>
           <td>${event.protocol}</td>
-          <td style="font-family: monospace;">${event.code}</td>
           <td class="event-data" title="${eventDataStr}">${eventDataStr}</td>
           <td>
-            <button class="use-btn" onclick="this.getRootNode().host.selectEvent(${index})">
+            <button class="use-btn" data-event-index="${index}">
               ${event.selected ? 'Ausgewählt' : 'Auswählen'}
             </button>
           </td>
         </tr>
       `;
     }).join('');
+    
+    // Event-Listener für die Auswahl-Buttons hinzufügen
+    const useButtons = tableBody.querySelectorAll('.use-btn');
+    useButtons.forEach(button => {
+      button.addEventListener('click', (e) => {
+        const index = parseInt(e.target.getAttribute('data-event-index'));
+        this.selectEvent(index);
+      });
+    });
   }
 
   updateTableWithStatus(message) {
@@ -957,7 +964,7 @@ class HassBeamSetupCard extends HTMLElement {
     
     tableBody.innerHTML = `
       <tr>
-        <td colspan="5" style="text-align: center; padding: 20px; color: var(--secondary-text-color);">
+        <td colspan="4" style="text-align: center; padding: 20px; color: var(--secondary-text-color);">
           ${message}
         </td>
       </tr>
