@@ -1221,22 +1221,18 @@ class HassBeamSetupCard extends HTMLElement {
     }
 
     try {
-      // Zeitstempel vor dem Speichern erfassen
-      const beforeSave = Date.now();
-
-      // Direkter Service-Aufruf
+      // Service-Aufruf zum Speichern (Antwort wird ignoriert)
       console.log('HassBeam Setup: Calling save_ir_code service...');
-      const serviceResponse = await this._hass.callService('hassbeam_connect', 'save_ir_code', {
+      await this._hass.callService('hassbeam_connect', 'save_ir_code', {
         device: device,
         action: action,
         event_data: JSON.stringify(selectedEvent.rawData)
       });
-      console.log('HassBeam Setup: Service response:', serviceResponse);
+      console.log('HassBeam Setup: save_ir_code service called. Checking for result...');
 
       // Warte kurz und prüfe dann gezielt auf device+action
       setTimeout(async () => {
         try {
-          // Jetzt gezielt nach device+action filtern
           const checkResponse = await this._hass.callService('hassbeam_connect', 'get_recent_codes', {
             device: device,
             action: action,
@@ -1268,22 +1264,18 @@ class HassBeamSetupCard extends HTMLElement {
               return;
             }
           } else {
-            // Kein Code gefunden - unerwarteter Fehler
-            alert('Unerwarteter Fehler beim Speichern. Bitte überprüfen Sie die Logs.');
+            // Kein Code gefunden - entweder Fehler beim Speichern oder Race Condition
+            alert('Fehler: Der IR-Code konnte nicht gespeichert werden oder existiert bereits. Bitte prüfen Sie die Home Assistant Logs.');
           }
         } catch (checkError) {
           console.error('HassBeam Setup: Error checking save result:', checkError);
-          alert('Fehler beim Überprüfen des Speichervorgangs: ' + checkError.message);
+          alert('Fehler beim Überprüfen des Speichervorgangs: ' + (checkError.message || checkError));
         }
       }, 1000); // 1 Sekunde warten
     } catch (error) {
-      // Backend gibt Fehler zurück, z.B. bei Duplikat
+      // Fehler beim Service-Aufruf (z.B. Netzwerkfehler)
       console.error('HassBeam Setup: Fehler beim Speichern des IR-Codes:', error);
-      if (error && error.message && error.message.includes('already exists')) {
-        alert(`Fehler: Ein IR-Code für "${device}.${action}" existiert bereits!\n\nBitte löschen Sie zuerst den vorhandenen Eintrag in der HassBeam Card oder verwenden Sie einen anderen Geräte-/Aktionsnamen.`);
-      } else {
-        alert('Fehler beim Speichern des IR-Codes: ' + (error.message || error));
-      }
+      alert('Fehler beim Speichern des IR-Codes: ' + (error.message || error));
     }
   }
 
