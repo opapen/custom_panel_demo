@@ -795,6 +795,13 @@ class HassBeamSetupCard extends HTMLElement {
         .use-btn:hover {
           background: var(--primary-color-dark);
         }
+        .use-btn.selected {
+          background: var(--success-color);
+          color: var(--text-primary-color);
+        }
+        .use-btn.selected:hover {
+          background: var(--success-color-dark);
+        }
         .event-data {
           font-family: monospace;
           font-size: 12px;
@@ -937,7 +944,13 @@ class HassBeamSetupCard extends HTMLElement {
       return;
     }
     
-    tableBody.innerHTML = this.capturedEvents.map((event, index) => {
+    // Duplikate basierend auf Event Data entfernen
+    const uniqueEvents = this.capturedEvents.filter((event, index, array) => {
+      const eventDataStr = JSON.stringify(event.rawData);
+      return array.findIndex(e => JSON.stringify(e.rawData) === eventDataStr) === index;
+    });
+    
+    tableBody.innerHTML = uniqueEvents.map((event, index) => {
       const timeString = event.timestamp.toLocaleTimeString('de-DE');
       const eventDataStr = JSON.stringify(event.rawData);
       
@@ -947,7 +960,7 @@ class HassBeamSetupCard extends HTMLElement {
           <td>${event.protocol}</td>
           <td class="event-data" title="${eventDataStr}">${eventDataStr}</td>
           <td>
-            <button class="use-btn" data-event-index="${index}">
+            <button class="use-btn ${event.selected ? 'selected' : ''}" data-event-index="${index}">
               ${event.selected ? 'Ausgewählt' : 'Auswählen'}
             </button>
           </td>
@@ -960,7 +973,12 @@ class HassBeamSetupCard extends HTMLElement {
     useButtons.forEach(button => {
       button.addEventListener('click', (e) => {
         const index = parseInt(e.target.getAttribute('data-event-index'));
-        this.selectEvent(index);
+        // Finde das originale Event basierend auf dem gefilterten Index
+        const selectedUniqueEvent = uniqueEvents[index];
+        const originalIndex = this.capturedEvents.findIndex(event => 
+          JSON.stringify(event.rawData) === JSON.stringify(selectedUniqueEvent.rawData)
+        );
+        this.selectEvent(originalIndex);
       });
     });
   }
